@@ -1,0 +1,22 @@
+# Node
+node_modules/
+.next/
+.env.local
+.env
+out/
+
+# Python
+.venv/
+__pycache__/
+.env
+*.pyc
+*.db
+
+# Keep environment variables out of version control
+.env
+
+
+Backend/.env
+
+Backend/.venv/
+*.zip
