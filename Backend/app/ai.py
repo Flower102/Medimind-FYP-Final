@@ -23,8 +23,7 @@ from __future__ import annotations
 import base64
 import json
 from typing import Any
-
-
+import httpx 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field
 
