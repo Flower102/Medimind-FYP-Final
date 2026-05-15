@@ -1,127 +1,43 @@
-// frontend/src/app/learning-workspace/page.tsx
+// frontend/src/app/quiz/[attemptId]/page.tsx
 
 "use client";
 
 /**
- * Learning Workspace page.
+ * Quiz attempt page.
  *
- * This page lets the user:
- * - Create and edit learning notes
- * - Save reflections and confidence ratings
- * - Favourite notes
- * - Export notes as PDF
- * - Start an AI summary
- * - Generate a quiz from a saved note
+ * This page:
+ * - Loads one quiz attempt from the backend
+ * - Lets the user answer questions
+ * - Supports "answers at the end" and "answers after each question"
+ * - Supports optional timer
+ * - Submits the quiz and shows a result/review screen
+ * - Converts backend error codes into clear plain-English messages
  */
 
-import React, { useCallback, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import * as lucideReact from "lucide-react";
-import jsPDF from "jspdf";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useParams, useSearchParams } from "next/navigation";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  Clock,
+  HelpCircle,
+  Loader2,
+  XCircle,
+} from "lucide-react";
 
 import {
-  createNote,
-  deleteNote,
-  getNote,
-  listNotes,
-  updateNote,
-  type Note,
-} from "@/src/lib/notesApi";
-
-import { generateQuiz, type RevealMode } from "@/src/lib/quizApi";
-import { useI18n } from "@/src/i18n/I18nProvider";
+  answerQuizQuestion,
+  getQuizAttempt,
+  submitQuizAttempt,
+  type QuizAttempt,
+  type QuizQuestion,
+  type QuizResult,
+} from "@/src/lib/quizApi";
 
 /* --------------------------------
-   Local quiz option types
--------------------------------- */
-
-type QuizQuestionCount = 10 | 15 | 20;
-type QuizRevealMode = RevealMode;
-
-type BannerState = {
-  open: boolean;
-  type: "success" | "error" | "info";
-  message: string;
-};
-
-/* --------------------------------
-   Plain-English error helpers
--------------------------------- */
-
-/**
- * Pulls a code/message out of different possible thrown error shapes.
- */
-function getRawErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return "UNKNOWN_ERROR";
-  }
-}
-
-/**
- * Converts backend-style error codes into user-friendly messages.
- * This means users do not see confusing codes like AUTH_MISSING_TOKEN.
- */
-function getFriendlyErrorMessage(error: unknown, fallback: string): string {
-  const raw = getRawErrorMessage(error);
-
-  const code = raw.trim();
-
-  switch (code) {
-    case "AUTH_MISSING_TOKEN":
-    case "AUTH_INVALID_TOKEN":
-    case "AUTH_SESSION_EXPIRED":
-    case "AUTH_MISSING_REFRESH":
-    case "AUTH_INVALID_REFRESH":
-    case "AUTH_REFRESH_EXPIRED":
-      return "Your session has expired or you are not signed in. Please sign in again, then try this action one more time.";
-
-    case "AUTH_USER_NOT_FOUND":
-      return "We could not find your account. Please sign in again or create a new account.";
-
-    case "NOTE_NOT_FOUND":
-    case "NOT_FOUND":
-    case "REQUEST_FAILED_404":
-      return "The note could not be found. It may have already been deleted or moved. Please refresh the page and try again.";
-
-    case "FORBIDDEN":
-    case "REQUEST_FAILED_403":
-      return "You do not have permission to access this item. Please make sure you are signed in with the correct account.";
-
-    case "VALIDATION_ERROR":
-    case "REQUEST_FAILED_422":
-      return "Some information was missing or invalid. Please check your note content and try again.";
-
-    case "REQUEST_FAILED_500":
-    case "INTERNAL_SERVER_ERROR":
-      return "The server had a problem while processing this request. Please try again. If it continues, check the backend terminal logs.";
-
-    case "NETWORK_ERROR":
-    case "BACKEND_CONNECTION_FAILED":
-      return "The app could not connect to the backend server. Please check that FastAPI is running, then try again.";
-
-    default:
-      break;
-  }
-
-  // If the message already looks readable, use it.
-  if (
-    code.includes(" ") &&
-    !code.startsWith("REQUEST_FAILED_") &&
-    !/^[A-Z0-9_]+$/.test(code)
-  ) {
-    return code;
-  }
-
-  return fallback;
-}
-
-/* --------------------------------
-   Reusable UI components
+   Small reusable card
 -------------------------------- */
 
 function Card({
@@ -134,9 +50,8 @@ function Card({
   return (
     <div
       className={[
-        "rounded-2xl border p-6 shadow-sm",
-        "border-slate-200 bg-white text-slate-900",
-        "dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50",
+        "rounded-2xl border border-slate-200 bg-white p-6 shadow-sm",
+        "dark:border-slate-800 dark:bg-slate-900",
         className,
       ].join(" ")}
     >
@@ -145,1303 +60,920 @@ function Card({
   );
 }
 
-function StatusBanner({
-  type,
-  message,
-  onClose,
-}: {
-  type: "success" | "error" | "info";
-  message: string;
-  onClose: () => void;
-}) {
-  const { t } = useI18n();
+/* --------------------------------
+   Time helper
+-------------------------------- */
 
-  const tx = useCallback(
-    (key: string, fallback: string) => {
-      const value = t(key);
-      return value === key ? fallback : value;
-    },
-    [t]
-  );
+function formatTime(seconds: number) {
+  const safeSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainingSeconds = safeSeconds % 60;
 
-  const styles =
-    type === "success"
-      ? "border-green-200 bg-green-50 text-green-900 dark:border-green-900/50 dark:bg-green-950/40 dark:text-green-100"
-      : type === "error"
-        ? "border-red-200 bg-red-50 text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100"
-        : "border-slate-200 bg-slate-50 text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50";
-
-  return (
-    <div
-      className={`flex items-start justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${styles}`}
-    >
-      <div>
-        <div className="font-semibold">
-          {type === "success"
-            ? tx("common.success", "Success")
-            : type === "error"
-              ? tx("common.error", "Error")
-              : tx("common.info", "Info")}
-        </div>
-
-        <div className="mt-0.5 leading-6 opacity-90">{message}</div>
-      </div>
-
-      <button
-        type="button"
-        onClick={onClose}
-        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
-      >
-        {tx("common.close", "Close")}
-      </button>
-    </div>
-  );
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
-export default function LearningWorkspacePage() {
-  const router = useRouter();
+/* --------------------------------
+   Error helpers
+
+   These stop raw backend codes such as:
+   QUIZ_ATTEMPT_NOT_FOUND
+   AUTH_MISSING_TOKEN
+   OPENAI_QUIZ_UPSTREAM_ERROR
+
+   from being shown directly to users.
+-------------------------------- */
+
+function getRawErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "UNKNOWN_ERROR";
+  }
+}
+
+function getFriendlyQuizError(error: unknown, fallback: string) {
+  const raw = getRawErrorMessage(error).trim();
+
+  switch (raw) {
+    case "AUTH_MISSING_TOKEN":
+    case "AUTH_INVALID_TOKEN":
+    case "AUTH_MISSING_REFRESH":
+    case "AUTH_INVALID_REFRESH":
+    case "AUTH_REFRESH_EXPIRED":
+    case "AUTH_SESSION_EXPIRED":
+      return "Your session has expired or you are not signed in. Please sign in again, then return to your quiz.";
+
+    case "AUTH_USER_NOT_FOUND":
+      return "We could not find your account. Please sign in again using the account that created this quiz.";
+
+    case "QUIZ_ATTEMPT_NOT_FOUND":
+    case "REQUEST_FAILED_404":
+      return "This quiz could not be found. It may have been deleted, or it may belong to a different account. Please go back to Learning Workspace or Progress and open the quiz again.";
+
+    case "QUIZ_QUESTION_NOT_FOUND":
+      return "This question could not be found in the quiz. Please refresh the page. If the problem continues, start a new quiz from your saved note.";
+
+    case "QUIZ_ALREADY_SUBMITTED":
+      return "This quiz has already been submitted. You can review the result, but answers can no longer be changed.";
+
+    case "QUIZ_NOT_SUBMITTED":
+      return "This quiz has not been submitted yet. Please answer the questions and click Submit Quiz.";
+
+    case "QUIZ_HAS_NO_QUESTIONS":
+      return "This quiz does not contain any questions. Please return to Learning Workspace and generate a new quiz.";
+
+    case "INVALID_SELECTED_OPTION":
+      return "The selected answer option is invalid. Please choose one of the available options and try again.";
+
+    case "INVALID_QUESTION_COUNT":
+      return "The quiz question count is invalid. Please choose 10, 15, or 20 questions.";
+
+    case "NOTE_NOT_FOUND":
+      return "The note used for this quiz could not be found. It may have been deleted. Please go back to Learning Workspace and choose another saved note.";
+
+    case "OPENAI_API_KEY_MISSING":
+      return "The quiz generator is not configured on the backend. Please add your OpenAI API key in the backend .env file, restart FastAPI, and try again.";
+
+    case "OPENAI_QUIZ_NETWORK_ERROR":
+      return "The backend could not connect to the AI service. Please check your internet connection and try again.";
+
+    case "OPENAI_QUIZ_UPSTREAM_ERROR":
+      return "The AI service returned an error while generating the quiz. Please try again in a few moments.";
+
+    case "OPENAI_QUIZ_EMPTY_RESPONSE":
+      return "The AI service did not return quiz content. Please try again, or use a note with more detailed content.";
+
+    case "AI_QUIZ_BAD_JSON":
+    case "AI_QUIZ_BAD_SHAPE":
+    case "AI_QUIZ_WRONG_QUESTION_COUNT":
+    case "AI_QUIZ_OPTIONS_MUST_BE_FOUR":
+    case "AI_QUIZ_BAD_CORRECT_INDEX":
+    case "AI_QUIZ_GENERATION_FAILED":
+      return "The AI generated a quiz in the wrong format. Please try again. If it keeps happening, make your note clearer and more detailed before generating another quiz.";
+
+    case "REQUEST_FAILED_422":
+    case "VALIDATION_ERROR":
+      return "Some quiz data was missing or invalid. Please refresh the page and try again.";
+
+    case "REQUEST_FAILED_500":
+    case "INTERNAL_SERVER_ERROR":
+      return "The server had a problem while processing this quiz. Please try again. If it continues, check the backend terminal logs.";
+
+    case "NETWORK_ERROR":
+    case "BACKEND_CONNECTION_FAILED":
+      return "The app could not connect to the backend server. Please check that FastAPI is running, then try again.";
+
+    default:
+      break;
+  }
+
+  // If the backend already sent readable text, show it.
+  if (
+    raw.includes(" ") &&
+    !raw.startsWith("REQUEST_FAILED_") &&
+    !/^[A-Z0-9_]+$/.test(raw)
+  ) {
+    return raw;
+  }
+
+  return fallback;
+}
+
+/* --------------------------------
+   Result calculation helper
+
+   This protects the result page if the backend response
+   is missing correctCount or scorePercent.
+-------------------------------- */
+
+function getResultStats(result: QuizResult) {
+  const calculatedCorrectCount = result.questions.filter(
+    (question) => question.isCorrect === true
+  ).length;
+
+  const totalQuestions =
+    typeof result.questionCount === "number" && result.questionCount > 0
+      ? result.questionCount
+      : result.questions.length;
+
+  const correctCount =
+    typeof result.correctCount === "number"
+      ? result.correctCount
+      : calculatedCorrectCount;
+
+  const scorePercent =
+    typeof result.scorePercent === "number"
+      ? result.scorePercent
+      : totalQuestions > 0
+        ? Math.round((correctCount / totalQuestions) * 100)
+        : 0;
+
+  return {
+    correctCount,
+    totalQuestions,
+    scorePercent,
+  };
+}
+
+export default function QuizAttemptPage() {
+  const params = useParams<{ attemptId: string }>();
   const searchParams = useSearchParams();
-  const { t } = useI18n();
 
-  const tx = useCallback(
-    (key: string, fallback: string) => {
-      const value = t(key);
-      return value === key ? fallback : value;
-    },
-    [t]
-  );
+  const attemptId = params.attemptId;
 
   /* --------------------------------
-     Notes state
+     Dynamic return link
   -------------------------------- */
 
-  const [noteList, setNoteList] = useState<Note[]>([]);
-  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+const fromPage = searchParams.get("from");
 
-  const [noteTitle, setNoteTitle] = useState("");
-  const [noteContent, setNoteContent] = useState("");
+const backHref =
+  fromPage === "dashboard"
+    ? "/dashboard"
+    : fromPage === "progress"
+      ? "/progress"
+      : "/learning_workspace";
 
-  const [reflection, setReflection] = useState("");
-  const [confidence, setConfidence] = useState<number>(5);
-  const [isFavorite, setIsFavorite] = useState(false);
-
-  const [isLoadingNotes, setIsLoadingNotes] = useState(false);
-  const [hasLoadedNotes, setHasLoadedNotes] = useState(false);
-  const [isSavingNote, setIsSavingNote] = useState(false);
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+const backLabel =
+  fromPage === "dashboard"
+    ? "Back to Dashboard"
+    : fromPage === "progress"
+      ? "Back to Progress"
+      : "Back to Workspace";
 
   /* --------------------------------
-     Quiz setup state
+     Main quiz state
   -------------------------------- */
 
-  const [showQuizModal, setShowQuizModal] = useState(false);
-  const [selectedQuizNoteId, setSelectedQuizNoteId] = useState<string | null>(
+  const [attempt, setAttempt] = useState<QuizAttempt | null>(null);
+  const [result, setResult] = useState<QuizResult | null>(null);
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(
     null
   );
 
-  const [quizQuestionCount, setQuizQuestionCount] =
-    useState<QuizQuestionCount>(10);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSavingAnswer, setIsSavingAnswer] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [quizRevealMode, setQuizRevealMode] =
-    useState<QuizRevealMode>("end");
+  const [error, setError] = useState("");
+  const [answerMessage, setAnswerMessage] = useState("");
 
-  const [quizTimerEnabled, setQuizTimerEnabled] = useState(false);
-  const [quizTimeLimitMinutes, setQuizTimeLimitMinutes] = useState(10);
-  const [isStartingQuiz, setIsStartingQuiz] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 
-  /* --------------------------------
-     Status banners
-  -------------------------------- */
+  // Used to calculate total time taken.
+  const startedAtRef = useRef<number>(Date.now());
 
-  const [pageStatus, setPageStatus] = useState<BannerState>({
-    open: false,
-    type: "info",
-    message: "",
-  });
-
-  const [noteStatus, setNoteStatus] = useState<BannerState>({
-    open: false,
-    type: "info",
-    message: "",
-  });
-
-  const showPageStatus = useCallback(
-    (type: BannerState["type"], message: string) => {
-      setPageStatus({ open: true, type, message });
-
-      window.setTimeout(() => {
-        setPageStatus((current) => ({ ...current, open: false }));
-      }, 3500);
-    },
-    []
-  );
-
-  const showNoteStatus = useCallback(
-    (type: BannerState["type"], message: string) => {
-      setNoteStatus({ open: true, type, message });
-
-      window.setTimeout(() => {
-        setNoteStatus((current) => ({ ...current, open: false }));
-      }, 3500);
-    },
-    []
-  );
+  // Stops the timer from auto-submitting more than once.
+  const autoSubmittedRef = useRef(false);
 
   /* --------------------------------
-     Load notes from backend
+     Quiz values
   -------------------------------- */
 
-  const refreshNotes = useCallback(async () => {
-    setIsLoadingNotes(true);
+  const questions = useMemo(() => {
+    return attempt?.questions ?? [];
+  }, [attempt?.questions]);
+
+  const currentQuestion = questions[currentIndex];
+
+  const isLastQuestion = currentIndex === questions.length - 1;
+
+  const answeredCount = useMemo(() => {
+    return questions.filter(
+      (question) =>
+        question.selectedOptionIndex !== null &&
+        question.selectedOptionIndex !== undefined
+    ).length;
+  }, [questions]);
+
+  const displayedAnsweredCount = useMemo(() => {
+    const currentSaved =
+      currentQuestion?.selectedOptionIndex !== null &&
+      currentQuestion?.selectedOptionIndex !== undefined;
+
+    const currentSelected = selectedOptionIndex !== null;
+
+    // Count the current selection immediately, even before backend save finishes.
+    if (currentSelected && !currentSaved) {
+      return answeredCount + 1;
+    }
+
+    return answeredCount;
+  }, [answeredCount, currentQuestion?.selectedOptionIndex, selectedOptionIndex]);
+
+  const questionsLeft = Math.max(questions.length - displayedAnsweredCount, 0);
+
+  const progressPercent =
+    questions.length > 0
+      ? Math.round(((currentIndex + 1) / questions.length) * 100)
+      : 0;
+
+  const getTimeTakenSeconds = useCallback(() => {
+    return Math.round((Date.now() - startedAtRef.current) / 1000);
+  }, []);
+
+  /* --------------------------------
+     Load quiz attempt from backend
+  -------------------------------- */
+
+  const loadQuiz = useCallback(async () => {
+    setIsLoading(true);
+    setError("");
 
     try {
-      const notes = await listNotes();
-      setNoteList(notes);
+      const loaded = await getQuizAttempt(attemptId);
+
+      setAttempt(loaded);
+
+      // If already completed, go straight to result review.
+      if (loaded.completedAt) {
+        setResult(loaded as QuizResult);
+      }
+
+      const firstQuestion = loaded.questions[0];
+      setSelectedOptionIndex(firstQuestion?.selectedOptionIndex ?? null);
+
+      // Timer starts when the page opens.
+      if (loaded.timerEnabled && loaded.timeLimitSeconds && !loaded.completedAt) {
+        setSecondsLeft(loaded.timeLimitSeconds);
+      }
     } catch (error: unknown) {
       console.error(error);
 
-      showNoteStatus(
-        "error",
-        getFriendlyErrorMessage(
+      setError(
+        getFriendlyQuizError(
           error,
-          "Failed to load your saved notes. Please refresh the page. If this continues, sign in again and check that the backend is running."
+          "Could not load this quiz. Please go back and open it again. If the problem continues, check that the backend is running."
         )
       );
     } finally {
-      setIsLoadingNotes(false);
-      setHasLoadedNotes(true);
+      setIsLoading(false);
     }
-  }, [showNoteStatus]);
+  }, [attemptId]);
 
   useEffect(() => {
-    refreshNotes();
-  }, [refreshNotes]);
+    loadQuiz();
+  }, [loadQuiz]);
 
   /* --------------------------------
-     Start a new note
+     Save one answer
   -------------------------------- */
 
-  const handleNewNote = useCallback(() => {
-    setSelectedNoteId(null);
-    setNoteTitle("");
-    setNoteContent("");
-    setReflection("");
-    setConfidence(5);
-    setIsFavorite(false);
+  const updateQuestionLocally = useCallback(
+    (questionId: string, patch: Partial<QuizQuestion>) => {
+      setAttempt((previousAttempt) => {
+        if (!previousAttempt) return previousAttempt;
 
-    showNoteStatus(
-      "info",
-      tx("learning.status.newNote", "New note started. You can now write or paste your health information.")
-    );
-  }, [showNoteStatus, tx]);
-
-  /* --------------------------------
-     Select an existing saved note
-  -------------------------------- */
-
-  const handleSelectNote = useCallback(
-    async (noteId: string) => {
-      try {
-        const note = await getNote(noteId);
-
-        setSelectedNoteId(note.id);
-        setNoteTitle(note.title ?? "");
-        setNoteContent(note.content);
-        setReflection(note.reflection ?? "");
-        setConfidence(note.confidence ?? 5);
-        setIsFavorite(note.isFavorite);
-
-        showNoteStatus(
-          "info",
-          tx("learning.status.noteLoaded", "Note loaded. You can edit it, export it, or use it for AI summary and quiz.")
-        );
-      } catch (error: unknown) {
-        console.error(error);
-
-        showNoteStatus(
-          "error",
-          getFriendlyErrorMessage(
-            error,
-            "Failed to load this note. It may have been deleted or the server may be unavailable. Please refresh and try again."
-          )
-        );
-      }
+        return {
+          ...previousAttempt,
+          questions: previousAttempt.questions.map((question) =>
+            question.id === questionId ? { ...question, ...patch } : question
+          ),
+        };
+      });
     },
-    [showNoteStatus, tx]
+    []
   );
 
-  /* --------------------------------
-     Save note helper
-  -------------------------------- */
+  const saveCurrentAnswer = useCallback(async () => {
+    if (!currentQuestion) return false;
 
-  const saveNoteInternal = useCallback(async (): Promise<string | null> => {
-    if (!noteContent.trim()) {
-      showNoteStatus(
-        "info",
-        tx(
-          "learning.status.writeBeforeSaving",
-          "Please write or paste some note content before saving."
-        )
-      );
-      return null;
+    if (selectedOptionIndex === null) {
+      setAnswerMessage("Choose an answer first, then continue.");
+      return false;
     }
 
+    setIsSavingAnswer(true);
+    setAnswerMessage("");
+    setError("");
+
     try {
-      let saved: Note;
+      const saved = await answerQuizQuestion({
+        attemptId,
+        questionId: currentQuestion.id,
+        selectedOptionIndex,
+      });
 
-      const payload = {
-        title: noteTitle.trim() ? noteTitle.trim() : null,
-        content: noteContent,
-        reflection,
-        confidence,
-        isFavorite,
-      };
+      updateQuestionLocally(currentQuestion.id, {
+        selectedOptionIndex: saved.selectedOptionIndex,
+        correctOptionIndex: saved.correctOptionIndex,
+        explanation: saved.explanation,
+        isCorrect: saved.isCorrect,
+      });
 
-      if (!selectedNoteId) {
-        saved = await createNote(payload);
-        setSelectedNoteId(saved.id);
+      return true;
+    } catch (error: unknown) {
+      console.error(error);
+
+      setError(
+        getFriendlyQuizError(
+          error,
+          "Could not save your answer. Please check your connection and try again."
+        )
+      );
+
+      return false;
+    } finally {
+      setIsSavingAnswer(false);
+    }
+  }, [
+    attemptId,
+    currentQuestion,
+    selectedOptionIndex,
+    updateQuestionLocally,
+  ]);
+
+  /* --------------------------------
+     Submit whole quiz
+  -------------------------------- */
+
+  const handleSubmitQuiz = useCallback(async () => {
+    setIsSubmitting(true);
+    setError("");
+
+    try {
+      const submitted = await submitQuizAttempt({
+        attemptId,
+        timeTakenSeconds: getTimeTakenSeconds(),
+      });
+
+      setResult(submitted);
+      setAttempt(submitted);
+    } catch (error: unknown) {
+      console.error(error);
+
+      setError(
+        getFriendlyQuizError(
+          error,
+          "Could not submit the quiz. Please try again. If it continues, refresh the page and check the backend."
+        )
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [attemptId, getTimeTakenSeconds]);
+
+  /* --------------------------------
+     Timer countdown
+  -------------------------------- */
+
+  useEffect(() => {
+    if (!attempt?.timerEnabled) return;
+    if (secondsLeft === null) return;
+    if (result) return;
+
+    if (secondsLeft <= 0) {
+      if (!autoSubmittedRef.current) {
+        autoSubmittedRef.current = true;
+        handleSubmitQuiz();
+      }
+
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setSecondsLeft((value) => (value === null ? null : value - 1));
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [attempt?.timerEnabled, handleSubmitQuiz, result, secondsLeft]);
+
+  /* --------------------------------
+     Navigation helpers
+  -------------------------------- */
+
+  const goToNextQuestion = useCallback(() => {
+    if (isLastQuestion) return;
+
+    const nextIndex = currentIndex + 1;
+    const nextQuestion = questions[nextIndex];
+
+    setCurrentIndex(nextIndex);
+    setSelectedOptionIndex(nextQuestion?.selectedOptionIndex ?? null);
+    setAnswerMessage("");
+  }, [currentIndex, isLastQuestion, questions]);
+
+  const handlePreviousQuestion = useCallback(() => {
+    if (currentIndex === 0) return;
+
+    const previousIndex = currentIndex - 1;
+    const previousQuestion = questions[previousIndex];
+
+    setCurrentIndex(previousIndex);
+    setSelectedOptionIndex(previousQuestion?.selectedOptionIndex ?? null);
+    setAnswerMessage("");
+  }, [currentIndex, questions]);
+
+  const currentQuestionHasRevealedAnswer =
+    attempt?.revealMode === "after_each" &&
+    currentQuestion?.isCorrect !== null &&
+    currentQuestion?.isCorrect !== undefined &&
+    currentQuestion?.selectedOptionIndex === selectedOptionIndex;
+
+  const handlePrimaryAction = useCallback(async () => {
+    if (!currentQuestion) return;
+
+    // after_each mode: first click checks answer, second click continues.
+    if (attempt?.revealMode === "after_each") {
+      if (!currentQuestionHasRevealedAnswer) {
+        const saved = await saveCurrentAnswer();
+
+        if (saved) {
+          setAnswerMessage("Answer saved. Review the feedback, then continue.");
+        }
+
+        return;
+      }
+
+      if (isLastQuestion) {
+        await handleSubmitQuiz();
       } else {
-        saved = await updateNote(selectedNoteId, payload);
+        goToNextQuestion();
       }
 
-      setNoteTitle(saved.title ?? "");
-      setNoteContent(saved.content);
-      setReflection(saved.reflection ?? "");
-      setConfidence(saved.confidence ?? 5);
-      setIsFavorite(saved.isFavorite);
+      return;
+    }
 
-      await refreshNotes();
+    // end mode: save and move on immediately.
+    const saved = await saveCurrentAnswer();
 
-      return saved.id;
-    } catch (error: unknown) {
-      console.error(error);
+    if (!saved) return;
 
-      showNoteStatus(
-        "error",
-        getFriendlyErrorMessage(
-          error,
-          "Failed to save your note. Please check your internet/backend connection and try again."
-        )
-      );
-
-      return null;
+    if (isLastQuestion) {
+      await handleSubmitQuiz();
+    } else {
+      goToNextQuestion();
     }
   }, [
-    confidence,
-    isFavorite,
-    noteContent,
-    noteTitle,
-    reflection,
-    refreshNotes,
-    selectedNoteId,
-    showNoteStatus,
-    tx,
+    attempt?.revealMode,
+    currentQuestion,
+    currentQuestionHasRevealedAnswer,
+    goToNextQuestion,
+    handleSubmitQuiz,
+    isLastQuestion,
+    saveCurrentAnswer,
   ]);
 
   /* --------------------------------
-     Save button
+     Loading / error states
   -------------------------------- */
 
-  const handleSaveNote = useCallback(async () => {
-    setIsSavingNote(true);
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Loading quiz...
+        </div>
+      </div>
+    );
+  }
 
-    const wasExistingNote = Boolean(selectedNoteId);
-    const savedId = await saveNoteInternal();
+  if (error && !attempt) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <div className="text-lg font-semibold text-red-600">
+            Could not load quiz
+          </div>
 
-    if (savedId) {
-      showNoteStatus(
-        "success",
-        wasExistingNote
-          ? tx("learning.status.changesSaved", "Changes saved successfully.")
-          : tx("learning.status.noteSaved", "Note saved successfully.")
-      );
-    }
+          <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            {error}
+          </p>
 
-    setIsSavingNote(false);
-  }, [saveNoteInternal, selectedNoteId, showNoteStatus, tx]);
+          <Link
+            href={backHref}
+            className="mt-5 inline-flex rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            {backLabel}
+          </Link>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!attempt || questions.length === 0 || !currentQuestion) {
+    return (
+      <Card>
+        <div className="text-lg font-semibold">No quiz questions found.</div>
+
+        <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+          This quiz does not contain any questions. Please return to Learning
+          Workspace and generate a new quiz from a saved note.
+        </p>
+
+        <Link
+          href={backHref}
+          className="mt-5 inline-flex rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          {backLabel}
+        </Link>
+      </Card>
+    );
+  }
 
   /* --------------------------------
-     Delete note
+     Result / review screen
   -------------------------------- */
 
-  const [deleteArmed, setDeleteArmed] = useState(false);
+  if (result) {
+    const resultStats = getResultStats(result);
 
-  const handleDeleteNote = useCallback(async () => {
-    if (!selectedNoteId) {
-      showNoteStatus(
-        "info",
-        tx("learning.status.selectNoteFirst", "Please select a saved note before deleting.")
-      );
-      return;
-    }
+    return (
+      <div className="mx-auto max-w-7xl space-y-6 pb-16">
+        <div className="overflow-hidden rounded-3xl border border-blue-200 bg-linear-to-r from-blue-600 via-blue-600 to-indigo-700 p-6 text-white shadow-sm">
+          <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
+                Quiz completed
+              </div>
 
-    if (!deleteArmed) {
-      setDeleteArmed(true);
-      showNoteStatus(
-        "info",
-        tx(
-          "learning.status.confirmDelete",
-          "Click Delete again to confirm. This will permanently remove the note."
-        )
-      );
+              <h1 className="mt-4 text-3xl font-semibold">Quiz Results</h1>
 
-      window.setTimeout(() => {
-        setDeleteArmed(false);
-      }, 3000);
+              <p className="mt-2 max-w-2xl text-sm text-blue-50">
+                {result.title}
+              </p>
+            </div>
 
-      return;
-    }
+            <Link
+              href={backHref}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {backLabel.replace("Back to ", "")}
+            </Link>
+          </div>
+        </div>
 
-    try {
-      await deleteNote(selectedNoteId);
+        <div className="grid gap-4 md:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="text-sm font-medium text-slate-500">Score</div>
+            <div className="mt-2 text-4xl font-semibold text-blue-600">
+              {resultStats.scorePercent}%
+            </div>
+          </div>
 
-      handleNewNote();
-      await refreshNotes();
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="text-sm font-medium text-slate-500">
+              Correct answers
+            </div>
+            <div className="mt-2 text-4xl font-semibold text-green-600">
+              {resultStats.correctCount}/{resultStats.totalQuestions}
+            </div>
+          </div>
 
-      showNoteStatus(
-        "success",
-        tx("learning.status.noteDeleted", "Note deleted successfully.")
-      );
-    } catch (error: unknown) {
-      console.error(error);
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="text-sm font-medium text-slate-500">Questions</div>
+            <div className="mt-2 text-4xl font-semibold text-slate-900 dark:text-slate-50">
+              {resultStats.totalQuestions}
+            </div>
+          </div>
 
-      showNoteStatus(
-        "error",
-        getFriendlyErrorMessage(
-          error,
-          "Failed to delete the note. Please refresh and try again."
-        )
-      );
-    } finally {
-      setDeleteArmed(false);
-    }
-  }, [
-    deleteArmed,
-    handleNewNote,
-    refreshNotes,
-    selectedNoteId,
-    showNoteStatus,
-    tx,
-  ]);
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="text-sm font-medium text-slate-500">Time taken</div>
+            <div className="mt-2 text-4xl font-semibold text-slate-900 dark:text-slate-50">
+              {formatTime(result.timeTakenSeconds ?? getTimeTakenSeconds())}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {result.questions.map((question, index) => (
+            <div
+              key={question.id}
+              className={[
+                "overflow-hidden rounded-3xl border bg-white shadow-sm dark:bg-slate-900",
+                question.isCorrect
+                  ? "border-green-200 dark:border-green-900/60"
+                  : "border-red-200 dark:border-red-900/60",
+              ].join(" ")}
+            >
+              <div
+                className={[
+                  "flex items-start gap-4 border-b px-6 py-5",
+                  question.isCorrect
+                    ? "border-green-100 bg-green-50/70 dark:border-green-900/50 dark:bg-green-950/25"
+                    : "border-red-100 bg-red-50/70 dark:border-red-900/50 dark:bg-red-950/25",
+                ].join(" ")}
+              >
+                <div
+                  className={[
+                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+                    question.isCorrect
+                      ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
+                      : "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+                  ].join(" ")}
+                >
+                  {question.isCorrect ? (
+                    <CheckCircle2 className="h-5 w-5" />
+                  ) : (
+                    <XCircle className="h-5 w-5" />
+                  )}
+                </div>
+
+                <div>
+                  <div className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                    Question {index + 1}
+                  </div>
+
+                  <div className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-50">
+                    {question.question}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 px-6 py-5">
+                {question.options.map((option, optionIndex) => {
+                  const isSelected =
+                    question.selectedOptionIndex === optionIndex;
+                  const isCorrect =
+                    question.correctOptionIndex === optionIndex;
+
+                  return (
+                    <div
+                      key={`${question.id}-${optionIndex}`}
+                      className={[
+                        "rounded-xl border px-4 py-3 text-sm font-medium",
+                        isCorrect
+                          ? "border-green-300 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950/40 dark:text-green-100"
+                          : isSelected
+                            ? "border-red-300 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100"
+                            : "border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200",
+                      ].join(" ")}
+                    >
+                      {option}
+                    </div>
+                  );
+                })}
+
+                {question.explanation && (
+                  <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm text-slate-700 dark:bg-slate-950 dark:text-slate-300">
+                    <div className="font-semibold text-slate-900 dark:text-slate-50">
+                      Explanation
+                    </div>
+
+                    <div className="mt-1 leading-6">
+                      {question.explanation}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="text-lg font-semibold text-slate-900 dark:text-slate-50">
+                Quiz completed
+              </div>
+
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                You can return to where you came from or start another quiz from
+                your saved notes.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link
+                href={backHref}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                {backLabel}
+              </Link>
+
+              <Link
+                href="/learning_workspace?openQuiz=true"
+                className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+              >
+                Start another quiz
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   /* --------------------------------
-     Favourite note
+     Active quiz screen
   -------------------------------- */
 
-  const handleToggleFavourite = useCallback(async () => {
-    if (!selectedNoteId) {
-      showPageStatus(
-        "info",
-        tx(
-          "learning.status.saveBeforeFavourite",
-          "Please save the note first, then you can add it to favourites."
-        )
-      );
-      return;
-    }
+  const disableAnswerButtons =
+    isSavingAnswer || isSubmitting || currentQuestionHasRevealedAnswer;
 
-    const nextFavorite = !isFavorite;
-
-    setIsFavorite(nextFavorite);
-
-    try {
-      const saved = await updateNote(selectedNoteId, {
-        isFavorite: nextFavorite,
-      });
-
-      setIsFavorite(saved.isFavorite);
-
-      setNoteList((previousNotes) =>
-        previousNotes.map((note) => (note.id === saved.id ? saved : note))
-      );
-
-      showPageStatus(
-        "success",
-        saved.isFavorite
-          ? tx("learning.status.savedToFavourites", "Saved to favourites.")
-          : tx("learning.status.removedFromFavourites", "Removed from favourites.")
-      );
-    } catch (error: unknown) {
-      console.error(error);
-
-      setIsFavorite(!nextFavorite);
-
-      showPageStatus(
-        "error",
-        getFriendlyErrorMessage(
-          error,
-          "Failed to update favourites. Please check your connection and try again."
-        )
-      );
-    }
-  }, [isFavorite, selectedNoteId, showPageStatus, tx]);
-
-  /* --------------------------------
-     Export PDF
-  -------------------------------- */
-
-  const handleExportPDF = useCallback(() => {
-    if (!noteContent.trim()) {
-      showPageStatus(
-        "info",
-        tx(
-          "learning.status.writeBeforeExport",
-          "Please write or select a note before exporting it as a PDF."
-        )
-      );
-      return;
-    }
-
-    const doc = new jsPDF("portrait", "mm", "a4");
-
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-
-    const margin = 16;
-    const contentWidth = pageWidth - margin * 2;
-
-    let y = 18;
-
-    const addNewPageIfNeeded = (spaceNeeded = 12) => {
-      if (y + spaceNeeded > pageHeight - 16) {
-        doc.addPage();
-        y = 18;
-      }
-    };
-
-    doc.setFillColor(37, 99, 235);
-    doc.roundedRect(margin, y, contentWidth, 20, 4, 4, "F");
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(15);
-    doc.text(
-      tx("learning.pdf.header", "MediMind Lite - Learning Notes"),
-      margin + 5,
-      y + 8
-    );
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text(
-      `${tx("learning.pdf.exported", "Exported")}: ${new Date().toLocaleString()}`,
-      margin + 5,
-      y + 15
-    );
-
-    y += 30;
-
-    const addSection = (title: string, body: string) => {
-      addNewPageIfNeeded(20);
-
-      doc.setFillColor(248, 250, 252);
-      doc.roundedRect(margin, y, contentWidth, 10, 3, 3, "F");
-
-      doc.setTextColor(37, 99, 235);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.text(title, margin + 4, y + 6.5);
-
-      y += 14;
-
-      doc.setTextColor(30, 41, 59);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10.5);
-
-      const lines = doc.splitTextToSize(
-        body || tx("learning.pdf.notProvided", "Not provided."),
-        contentWidth - 4
-      );
-
-      lines.forEach((line: string) => {
-        addNewPageIfNeeded(8);
-        doc.text(line, margin + 2, y);
-        y += 5.8;
-      });
-
-      y += 8;
-    };
-
-    addSection(
-      tx("learning.pdf.title", "Title"),
-      noteTitle.trim() || tx("learning.untitledNote", "Untitled Note")
-    );
-
-    addSection(tx("learning.pdf.healthNotes", "Health Notes"), noteContent);
-    addSection(tx("learning.pdf.reflection", "Personal Reflection"), reflection);
-    addSection(
-      tx("learning.pdf.confidence", "Confidence Rating"),
-      `${confidence}/10`
-    );
-
-    addSection(
-      tx("learning.pdf.disclaimerTitle", "Important Disclaimer"),
-      tx(
-        "learning.pdf.disclaimerText",
-        "This document is for educational support only. It is not medical advice, diagnosis, or treatment guidance. Always consult a healthcare professional for medical decisions."
-      )
-    );
-
-    const safeTitle = (noteTitle.trim() || "medimind-learning-note")
-      .replace(/[^a-z0-9]/gi, "-")
-      .toLowerCase();
-
-    doc.save(`${safeTitle}.pdf`);
-
-    showPageStatus(
-      "success",
-      tx("learning.status.exportedPdf", "Learning note exported as PDF.")
-    );
-  }, [confidence, noteContent, noteTitle, reflection, showPageStatus, tx]);
-
-  /* --------------------------------
-     Continue to AI summary
-  -------------------------------- */
-
-  const canGenerateAI =
-    noteContent.trim().length > 0 &&
-    reflection.trim().length > 0 &&
-    Number.isFinite(confidence) &&
-    confidence >= 1;
-
-  const handleGenerateAI = useCallback(async () => {
-    if (!canGenerateAI) {
-      showPageStatus(
-        "info",
-        tx(
-          "learning.status.completeStepsFirst",
-          "Please complete your notes, reflection, and confidence rating before opening the AI summary."
-        )
-      );
-      return;
-    }
-
-    setIsGeneratingAI(true);
-
-    try {
-      const savedNoteId = await saveNoteInternal();
-
-      if (!savedNoteId) return;
-
-      sessionStorage.setItem(
-        "mm_learning_context",
-        JSON.stringify({
-          noteId: savedNoteId,
-          title: noteTitle.trim() || null,
-          note: noteContent,
-          reflection,
-          confidence,
-          createdAt: new Date().toISOString(),
-        })
-      );
-
-      showPageStatus(
-        "success",
-        tx("learning.status.openingAi", "Saved. Opening AI summary...")
-      );
-
-      router.push(`/chatbot_InteractionPage?session=new&noteId=${savedNoteId}`);
-    } catch (error: unknown) {
-      console.error(error);
-
-      showPageStatus(
-        "error",
-        getFriendlyErrorMessage(
-          error,
-          "Failed to open the AI summary. Please save your note and try again."
-        )
-      );
-    } finally {
-      setIsGeneratingAI(false);
-    }
-  }, [
-    canGenerateAI,
-    confidence,
-    noteContent,
-    noteTitle,
-    reflection,
-    router,
-    saveNoteInternal,
-    showPageStatus,
-    tx,
-  ]);
-
-  /* --------------------------------
-     Quiz setup
-  -------------------------------- */
-
-  const handleOpenQuizModal = useCallback(() => {
-    const firstNote = noteList[0];
-    const noteIdToSelect = selectedNoteId ?? firstNote?.id;
-
-    if (!noteIdToSelect) {
-      showPageStatus(
-        "info",
-        tx(
-          "learning.status.saveBeforeQuiz",
-          "Please save at least one note first. The quiz is generated from saved note content."
-        )
-      );
-      return;
-    }
-
-    setSelectedQuizNoteId(noteIdToSelect);
-    setShowQuizModal(true);
-  }, [noteList, selectedNoteId, showPageStatus, tx]);
-
-  /* --------------------------------
-     Open quiz modal from URL
-  -------------------------------- */
-
-  useEffect(() => {
-    if (!hasLoadedNotes) return;
-    if (searchParams.get("openQuiz") !== "true") return;
-
-    handleOpenQuizModal();
-    router.replace("/learning_workspace");
-  }, [handleOpenQuizModal, hasLoadedNotes, router, searchParams]);
-
-  const handleStartQuiz = useCallback(async () => {
-    if (!selectedQuizNoteId) {
-      showPageStatus(
-        "info",
-        tx("learning.status.chooseNoteFirst", "Please choose a saved note first.")
-      );
-      return;
-    }
-
-    setIsStartingQuiz(true);
-
-    try {
-      let noteIdForQuiz = selectedQuizNoteId;
-
-      if (selectedNoteId && selectedQuizNoteId === selectedNoteId) {
-        const savedId = await saveNoteInternal();
-
-        if (!savedId) return;
-
-        noteIdForQuiz = savedId;
-      }
-
-      const safeTimeLimitMinutes = Math.max(
-        1,
-        Math.min(120, quizTimeLimitMinutes)
-      );
-
-      const attempt = await generateQuiz({
-        noteId: noteIdForQuiz,
-        questionCount: quizQuestionCount,
-        revealMode: quizRevealMode,
-        timerEnabled: quizTimerEnabled,
-        timeLimitSeconds: quizTimerEnabled ? safeTimeLimitMinutes * 60 : null,
-      });
-
-      setShowQuizModal(false);
-      router.push(`/quiz/${attempt.id}?from=learning-workspace`);
-    } catch (error: unknown) {
-      console.error(error);
-
-      showPageStatus(
-        "error",
-        getFriendlyErrorMessage(
-          error,
-          "Failed to start the quiz. Please make sure the note is saved and the backend is running."
-        )
-      );
-    } finally {
-      setIsStartingQuiz(false);
-    }
-  }, [
-    quizQuestionCount,
-    quizRevealMode,
-    quizTimerEnabled,
-    quizTimeLimitMinutes,
-    router,
-    saveNoteInternal,
-    selectedNoteId,
-    selectedQuizNoteId,
-    showPageStatus,
-    tx,
-  ]);
-
-  const charCount = noteContent.length;
+  const primaryButtonText =
+    attempt.revealMode === "after_each" && !currentQuestionHasRevealedAnswer
+      ? "Check Answer"
+      : isLastQuestion
+        ? "Submit Quiz"
+        : "Save & Next";
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="overflow-hidden rounded-3xl border border-blue-200 bg-linear-to-r from-blue-600 via-blue-600 to-indigo-700 p-6 text-white shadow-sm">
+        <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           <div>
-            <h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-50">
-              {tx("learning.title", "Learning Workspace")}
-            </h1>
+            <div className="inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
+              Active quiz
+            </div>
 
-            <p className="mt-1 text-slate-600 dark:text-slate-300">
-              {tx(
-                "learning.subtitle",
-                "Notes → Reflection → Confidence → AI summary → Quiz"
-              )}
+            <h1 className="mt-4 text-3xl font-semibold">Take Quiz</h1>
+
+            <p className="mt-2 max-w-2xl text-sm text-blue-50">
+              {attempt.title}
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={handleToggleFavourite}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
-            >
-              <lucideReact.Star
-                className={`h-4 w-4 ${
-                  isFavorite
-                    ? "fill-yellow-400 text-yellow-500"
-                    : "text-slate-600 dark:text-slate-300"
-                }`}
-              />
+            {attempt.timerEnabled && secondsLeft !== null && (
+              <div className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white">
+                <Clock className="h-4 w-4" />
+                {formatTime(secondsLeft)}
+              </div>
+            )}
 
-              {isFavorite
-                ? tx("learning.favourited", "Favourited")
-                : tx("learning.addToFavourites", "Add to Favourites")}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleExportPDF}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
+            <Link
+              href={backHref}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
             >
-              <lucideReact.Download className="h-4 w-4 text-slate-600 dark:text-slate-300" />
-              {tx("learning.exportPdf", "Export PDF")}
-            </button>
+              <ArrowLeft className="h-4 w-4" />
+              Exit
+            </Link>
           </div>
         </div>
-
-        {pageStatus.open && (
-          <StatusBanner
-            type={pageStatus.type}
-            message={pageStatus.message}
-            onClose={() =>
-              setPageStatus((current) => ({ ...current, open: false }))
-            }
-          />
-        )}
       </div>
 
-      {/* Notes card */}
-      <Card>
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
-              {tx("learning.healthNotesTitle", "Your Health Notes")}
-            </h2>
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-900 dark:border-red-900/50 dark:bg-red-950 dark:text-red-100">
+          {error}
+        </div>
+      )}
 
-            <p className="text-sm text-slate-500">
-              {charCount} {tx("learning.characters", "characters")}{" "}
-              {selectedNoteId
-                ? tx("learning.editingSavedNote", "• Editing saved note")
-                : tx("learning.newNoteLabel", "• New note")}
-            </p>
+      <Card>
+        <div className="mb-5">
+          <div className="flex items-center justify-between text-sm text-slate-500">
+            <span>
+              Question {currentIndex + 1} of {questions.length}
+            </span>
+
+            <span>
+              {questionsLeft === 0
+                ? "Ready to submit"
+                : `${questionsLeft} question${
+                    questionsLeft === 1 ? "" : "s"
+                  } left`}
+            </span>
           </div>
 
-          <div className="flex flex-wrap justify-end gap-2">
-            <button
-              type="button"
-              onClick={refreshNotes}
-              disabled={isLoadingNotes}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
-            >
-              <lucideReact.RefreshCw
-                className={`h-4 w-4 ${isLoadingNotes ? "animate-spin" : ""}`}
-              />
-              {tx("learning.refresh", "Refresh")}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleNewNote}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
-            >
-              <lucideReact.Plus className="h-4 w-4" />
-              {tx("learning.new", "New")}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSaveNote}
-              disabled={isSavingNote || isGeneratingAI}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
-            >
-              <lucideReact.Save className="h-4 w-4" />
-              {isSavingNote
-                ? tx("learning.saving", "Saving...")
-                : tx("learning.save", "Save")}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleDeleteNote}
-              disabled={!selectedNoteId}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
-            >
-              <lucideReact.Trash2 className="h-4 w-4" />
-              {deleteArmed
-                ? tx("learning.confirmDelete", "Confirm Delete")
-                : tx("learning.delete", "Delete")}
-            </button>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div
+              className="h-full rounded-full bg-blue-600 transition-all"
+              style={{ width: `${progressPercent}%` }}
+            />
           </div>
         </div>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
-          {/* Saved notes list */}
-          <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800 md:col-span-1">
-            <div className="mb-2 text-sm font-semibold">
-              {tx("learning.savedNotes", "Saved Notes")}
+        <div className="flex items-start gap-3">
+          <div className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+            <HelpCircle className="h-5 w-5" />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xl font-semibold leading-8 text-slate-900 dark:text-slate-50">
+              {currentQuestion.question}
+            </h2>
+
+            <div className="mt-5 space-y-3">
+              {currentQuestion.options.map((option, optionIndex) => {
+                const active = selectedOptionIndex === optionIndex;
+                const isCorrect =
+                  currentQuestion.correctOptionIndex === optionIndex;
+                const isWrongSelection =
+                  currentQuestionHasRevealedAnswer && active && !isCorrect;
+
+                return (
+                  <button
+                    key={`${currentQuestion.id}-${optionIndex}`}
+                    type="button"
+                    onClick={() => {
+                      setSelectedOptionIndex(optionIndex);
+                      setAnswerMessage("");
+                    }}
+                    disabled={disableAnswerButtons}
+                    className={[
+                      "w-full rounded-2xl border px-5 py-4 text-left text-sm font-medium transition disabled:cursor-not-allowed",
+                      currentQuestionHasRevealedAnswer && isCorrect
+                        ? "border-green-300 bg-green-50 text-green-900 dark:border-green-900 dark:bg-green-950/40 dark:text-green-100"
+                        : isWrongSelection
+                          ? "border-red-300 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100"
+                          : active
+                            ? "border-blue-500 bg-blue-50 text-blue-900 dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-100"
+                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-900",
+                    ].join(" ")}
+                  >
+                    {option}
+                  </button>
+                );
+              })}
             </div>
 
-            {noteList.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
-                <div className="font-semibold text-slate-900 dark:text-slate-50">
-                  {tx("learning.noSavedNotesYet", "No saved notes yet")}
-                </div>
-
-                <p className="mt-1">
-                  {tx(
-                    "learning.noSavedNotesHint",
-                    "Add your first note in the editor, then click Save."
-                  )}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {noteList.map((note) => (
-                  <button
-                    key={note.id}
-                    type="button"
-                    onClick={() => handleSelectNote(note.id)}
-                    className={[
-                      "w-full rounded-xl border px-3 py-2 text-left text-sm transition",
-                      "border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900",
-                      selectedNoteId === note.id
-                        ? "border-slate-900 bg-slate-50 dark:border-slate-200 dark:bg-slate-900"
-                        : "",
-                    ].join(" ")}
-                  >
-                    <div className="font-medium">
-                      {note.title?.trim()
-                        ? note.title
-                        : tx("learning.untitledNote", "Untitled Note")}
-                    </div>
-
-                    <div className="line-clamp-1 text-xs text-slate-500">
-                      {note.content}
-                    </div>
-                  </button>
-                ))}
+            {answerMessage && (
+              <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                {answerMessage}
               </div>
             )}
-          </div>
 
-          {/* Note editor */}
-          <div className="md:col-span-2">
-            <input
-              value={noteTitle}
-              onChange={(event) => setNoteTitle(event.target.value)}
-              placeholder={tx(
-                "learning.titlePlaceholder",
-                "Optional title e.g., Blood Pressure Notes"
-              )}
-              className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 dark:placeholder:text-slate-500"
-            />
-
-            <textarea
-              placeholder={tx(
-                "learning.notePlaceholder",
-                "Write or paste your health information here..."
-              )}
-              value={noteContent}
-              onChange={(event) => setNoteContent(event.target.value)}
-              className="mt-3 min-h-50 w-full resize-none rounded-xl border border-slate-200 bg-white p-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/20 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:ring-slate-200/20"
-            />
-
-            {noteStatus.open && (
-              <div className="mt-3">
-                <StatusBanner
-                  type={noteStatus.type}
-                  message={noteStatus.message}
-                  onClose={() =>
-                    setNoteStatus((current) => ({ ...current, open: false }))
-                  }
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      {/* Reflection */}
-      <Card>
-        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
-          {tx("learning.reflectionTitle", "Personal Reflection")}
-        </h2>
-
-        <p className="mt-1 text-slate-600 dark:text-slate-300">
-          {tx(
-            "learning.reflectionDesc",
-            "Write what you learned and how you will apply it."
-          )}
-        </p>
-
-        <textarea
-          placeholder={tx(
-            "learning.reflectionPlaceholder",
-            "What did you learn? How will you apply this?"
-          )}
-          value={reflection}
-          onChange={(event) => setReflection(event.target.value)}
-          className="mt-4 min-h-35 w-full resize-none rounded-xl border border-slate-200 bg-white p-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/20 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:ring-slate-200/20"
-        />
-      </Card>
-
-      {/* Confidence */}
-      <Card>
-        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
-          {tx("learning.confidenceTitle", "Confidence Level")}
-        </h2>
-
-        <p className="mt-1 text-slate-600 dark:text-slate-300">
-          {tx(
-            "learning.confidenceDesc",
-            "How confident do you feel about this topic?"
-          )}
-        </p>
-
-        <div className="mt-4 flex items-center justify-between">
-          <span className="text-sm text-slate-500">
-            {tx("learning.low", "Low")}
-          </span>
-
-          <span className="text-3xl font-semibold text-slate-900 dark:text-slate-50">
-            {confidence}/10
-          </span>
-
-          <span className="text-sm text-slate-500">
-            {tx("learning.high", "High")}
-          </span>
-        </div>
-
-        <input
-          className="mt-4 w-full"
-          type="range"
-          min={1}
-          max={10}
-          step={1}
-          value={confidence}
-          onChange={(event) => setConfidence(parseInt(event.target.value, 10))}
-        />
-      </Card>
-
-      {/* AI summary */}
-      <Card className="bg-slate-50 dark:bg-slate-950">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="flex items-center gap-2 text-xl font-semibold">
-              <lucideReact.Sparkles className="h-5 w-5" />
-              {tx("learning.aiSummaryTitle", "AI Summary")}
-            </h2>
-
-            <p className="mt-1 text-slate-600 dark:text-slate-300">
-              {tx(
-                "learning.aiSummaryDesc",
-                "Complete the three steps above, then continue to generate your AI summary in chat."
-              )}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleGenerateAI}
-            disabled={!canGenerateAI || isGeneratingAI || isSavingNote}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-4 text-base font-semibold text-slate-900 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800 md:w-auto"
-          >
-            <lucideReact.ArrowRight className="h-5 w-5" />
-            {isGeneratingAI
-              ? tx("learning.savingOpening", "Saving & Opening...")
-              : tx("learning.continueAiSummary", "Continue to AI Summary")}
-          </button>
-        </div>
-
-        {!canGenerateAI && (
-          <div className="mt-4 text-sm text-slate-600 dark:text-slate-300">
-            {tx("learning.required", "Required")}:{" "}
-            <span className="font-semibold">{tx("learning.notes", "Notes")}</span>{" "}
-            +{" "}
-            <span className="font-semibold">
-              {tx("learning.reflection", "Reflection")}
-            </span>{" "}
-            +{" "}
-            <span className="font-semibold">
-              {tx("learning.confidence", "Confidence")}
-            </span>
-            .
-          </div>
-        )}
-      </Card>
-
-      {/* Quiz */}
-      <Card>
-        <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
-          {tx("learning.takeQuizTitle", "Take a Quiz")}
-        </h2>
-
-        <p className="mt-1 text-slate-600 dark:text-slate-300">
-          {tx(
-            "learning.takeQuizDesc",
-            "Choose a saved note, select your options, then start a quiz."
-          )}
-        </p>
-
-        <button
-          type="button"
-          onClick={handleOpenQuizModal}
-          className="mt-4 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
-        >
-          <lucideReact.BookCheck className="h-4 w-4" />
-          {tx("learning.chooseNoteStartQuiz", "Choose Note & Start Quiz")}
-        </button>
-
-        {showQuizModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-            <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-lg font-semibold text-slate-900 dark:text-slate-50">
-                    {tx("learning.quizModalTitle", "Set up your quiz")}
-                  </div>
-
-                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                    {tx(
-                      "learning.quizModalDesc",
-                      "Choose a saved note and quiz options. The quiz will be generated and saved in the backend."
-                    )}
-                  </p>
+            {currentQuestionHasRevealedAnswer && (
+              <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+                <div className="font-semibold">
+                  {currentQuestion.isCorrect ? "Correct" : "Not quite"}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowQuizModal(false)}
-                  disabled={isStartingQuiz}
-                  className="rounded-xl border px-3 py-1 text-sm hover:bg-slate-50 disabled:opacity-50 dark:hover:bg-slate-800"
-                >
-                  {tx("common.close", "Close")}
-                </button>
-              </div>
-
-              {/* Choose note */}
-              <div className="mt-6">
-                <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
-                  {tx("learning.chooseNote", "Choose note")}
-                </div>
-
-                <div className="max-h-52 space-y-2 overflow-auto rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-                  {noteList.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
-                      <div className="font-semibold text-slate-900 dark:text-slate-50">
-                        {tx("learning.noSavedNotesYet", "No saved notes yet")}
-                      </div>
-
-                      <p className="mt-1">
-                        {tx(
-                          "learning.noSavedNotesQuizHint",
-                          "Please write a note and click Save before starting a quiz."
-                        )}
-                      </p>
-                    </div>
-                  ) : (
-                    noteList.map((note) => {
-                      const active = selectedQuizNoteId === note.id;
-
-                      return (
-                        <button
-                          key={note.id}
-                          type="button"
-                          onClick={() => setSelectedQuizNoteId(note.id)}
-                          disabled={isStartingQuiz}
-                          className={[
-                            "w-full rounded-xl border px-3 py-2 text-left text-sm transition disabled:opacity-50",
-                            active
-                              ? "border-blue-500 bg-blue-50 text-blue-900 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-100"
-                              : "border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800",
-                          ].join(" ")}
-                        >
-                          <div className="font-medium">
-                            {note.title?.trim()
-                              ? note.title
-                              : tx("learning.untitledNote", "Untitled Note")}
-                          </div>
-
-                          <div className="line-clamp-1 text-xs text-slate-500 dark:text-slate-400">
-                            {note.content}
-                          </div>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-
-              {/* Question count */}
-              <div className="mt-6">
-                <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
-                  {tx("learning.numberOfQuestions", "Number of questions")}
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  {([10, 15, 20] as QuizQuestionCount[]).map((count) => (
-                    <button
-                      key={count}
-                      type="button"
-                      onClick={() => setQuizQuestionCount(count)}
-                      disabled={isStartingQuiz}
-                      className={[
-                        "rounded-xl border px-4 py-3 text-sm font-semibold transition disabled:opacity-50",
-                        quizQuestionCount === count
-                          ? "border-blue-500 bg-blue-600 text-white"
-                          : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 dark:hover:bg-slate-800",
-                      ].join(" ")}
-                    >
-                      {count}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Reveal mode */}
-              <div className="mt-6">
-                <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
-                  {tx("learning.showAnswers", "Show answers")}
-                </div>
-
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={() => setQuizRevealMode("end")}
-                    disabled={isStartingQuiz}
-                    className={[
-                      "rounded-xl border px-4 py-3 text-left text-sm transition disabled:opacity-50",
-                      quizRevealMode === "end"
-                        ? "border-blue-500 bg-blue-50 text-blue-900 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-100"
-                        : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 dark:hover:bg-slate-800",
-                    ].join(" ")}
-                  >
-                    <div className="font-semibold">
-                      {tx("learning.answersAtEnd", "At the end")}
-                    </div>
-                    <div className="mt-1 text-xs opacity-80">
-                      {tx(
-                        "learning.answersAtEndDesc",
-                        "Best for a real test experience."
-                      )}
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setQuizRevealMode("after_each")}
-                    disabled={isStartingQuiz}
-                    className={[
-                      "rounded-xl border px-4 py-3 text-left text-sm transition disabled:opacity-50",
-                      quizRevealMode === "after_each"
-                        ? "border-blue-500 bg-blue-50 text-blue-900 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-100"
-                        : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 dark:hover:bg-slate-800",
-                    ].join(" ")}
-                  >
-                    <div className="font-semibold">
-                      {tx("learning.answersAfterEach", "After each question")}
-                    </div>
-                    <div className="mt-1 text-xs opacity-80">
-                      {tx(
-                        "learning.answersAfterEachDesc",
-                        "Best for learning while practising."
-                      )}
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Timer */}
-              <div className="mt-6 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-                <label className="flex cursor-pointer items-center justify-between gap-4">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-                      {tx("learning.enableTimer", "Enable timer")}
-                    </div>
-
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      {tx(
-                        "learning.enableTimerDesc",
-                        "Optional. The result page will show how long the quiz took."
-                      )}
-                    </div>
-                  </div>
-
-                  <input
-                    type="checkbox"
-                    checked={quizTimerEnabled}
-                    onChange={(event) =>
-                      setQuizTimerEnabled(event.target.checked)
-                    }
-                    disabled={isStartingQuiz}
-                    className="h-5 w-5"
-                  />
-                </label>
-
-                {quizTimerEnabled && (
-                  <div className="mt-4">
-                    <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                      {tx("learning.timeLimit", "Time limit")}
-                    </label>
-
-                    <select
-                      value={quizTimeLimitMinutes}
-                      onChange={(event) =>
-                        setQuizTimeLimitMinutes(Number(event.target.value))
-                      }
-                      disabled={isStartingQuiz}
-                      className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none dark:border-slate-800 dark:bg-slate-950"
-                    >
-                      <option value={5}>{tx("learning.minutes5", "5 minutes")}</option>
-                      <option value={10}>{tx("learning.minutes10", "10 minutes")}</option>
-                      <option value={15}>{tx("learning.minutes15", "15 minutes")}</option>
-                      <option value={20}>{tx("learning.minutes20", "20 minutes")}</option>
-                      <option value={30}>{tx("learning.minutes30", "30 minutes")}</option>
-                    </select>
+                {currentQuestion.explanation && (
+                  <div className="mt-1 leading-6">
+                    {currentQuestion.explanation}
                   </div>
                 )}
               </div>
-
-              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowQuizModal(false)}
-                  disabled={isStartingQuiz}
-                  className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
-                >
-                  {tx("common.cancel", "Cancel")}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleStartQuiz}
-                  disabled={!selectedQuizNoteId || isStartingQuiz}
-                  className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isStartingQuiz
-                    ? tx("learning.generatingQuiz", "Generating quiz...")
-                    : tx("learning.startQuiz", "Start Quiz")}
-                </button>
-              </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </Card>
+
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+        <button
+          type="button"
+          onClick={handlePreviousQuestion}
+          disabled={currentIndex === 0 || isSavingAnswer || isSubmitting}
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-50 dark:hover:bg-slate-800"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Previous
+        </button>
+
+        <button
+          type="button"
+          onClick={handlePrimaryAction}
+          disabled={isSavingAnswer || isSubmitting}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isSavingAnswer || isSubmitting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <ArrowRight className="h-4 w-4" />
+          )}
+
+          {primaryButtonText}
+        </button>
+      </div>
     </div>
   );
 }
