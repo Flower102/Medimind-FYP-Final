@@ -70,8 +70,8 @@ def send_email_with_brevo(to_email: str, code: str) -> None:
 
     payload = {
         "sender": {
-            "name": "MediMind",
-            "email": _extract_email_from_mail_from(settings.MAIL_FROM),
+            "name": settings.MAIL_FROM_NAME or "MediMind Lite",
+            "email": settings.MAIL_FROM,
         },
         "to": [
             {
@@ -100,6 +100,8 @@ def send_email_with_brevo(to_email: str, code: str) -> None:
             print("BREVO_EMAIL_ERROR_STATUS:", response.status_code)
             print("BREVO_EMAIL_ERROR_BODY:", response.text)
             raise RuntimeError("Email could not be sent through Brevo.")
+
+        print("BREVO_EMAIL_SENT:", response.status_code, response.text)
 
     except Exception as exc:
         print("BREVO_EMAIL_FAILED:", repr(exc))
