@@ -37,9 +37,21 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     VERIFY_CODE_EXPIRE_MINUTES: int = 10
 
+    # Email
+    # console = prints verification code in terminal / Render logs
+    # smtp = real SMTP email
+    # resend = real email through Resend HTTP API
     MAIL_TRANSPORT: str = "console"
-    MAIL_FROM: str = "no-reply@localhost"
+    MAIL_FROM: str = "MediMind <onboarding@resend.dev>"
 
+    # Temporary safety switch:
+    # Set this to true on Render only while testing if you want codes in logs.
+    ALLOW_CONSOLE_EMAIL_IN_PROD: bool = False
+
+    # Resend email API
+    RESEND_API_KEY: str = ""
+
+    # SMTP email settings
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_TLS: bool = True
@@ -55,14 +67,25 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: str = "http://localhost:3000/api/backend/auth/google/callback"
 
     @model_validator(mode="after")
-    def _validate_prod_email(self):
-        if self.ENV == "prod" and self.MAIL_TRANSPORT == "console":
-            raise ValueError("MAIL_TRANSPORT=console is not allowed in prod")
+    def _normalise_and_validate(self):
+        self.ENV = (self.ENV or "dev").lower().strip()
+        self.MAIL_TRANSPORT = (self.MAIL_TRANSPORT or "console").lower().strip()
+
+        if self.ENV == "prod":
+            self.AUTH_COOKIE_SECURE = True
+            self.AUTH_COOKIE_SAMESITE = "none"
+
+            if (
+                self.MAIL_TRANSPORT == "console"
+                and not self.ALLOW_CONSOLE_EMAIL_IN_PROD
+            ):
+                raise ValueError(
+                    "MAIL_TRANSPORT=console is blocked in prod. "
+                    "Use MAIL_TRANSPORT=resend for real email, or set "
+                    "ALLOW_CONSOLE_EMAIL_IN_PROD=true temporarily for testing."
+                )
+
         return self
 
 
 settings = Settings()
-
-if settings.ENV == "prod":
-    settings.AUTH_COOKIE_SECURE = True
-    settings.AUTH_COOKIE_SAMESITE = "none"
