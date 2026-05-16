@@ -1,18 +1,15 @@
 """
 Email sending helper.
 
-Development/testing:
+Development:
 - MAIL_TRANSPORT=console
 - Code prints in backend terminal / Render logs
 
-Production recommended:
-- MAIL_TRANSPORT=resend
-- Email is sent through Resend HTTP API
+Production free option:
+- MAIL_TRANSPORT=brevo
+- Sends through Brevo Email API over HTTPS
 
-SMTP:
-- MAIL_TRANSPORT=smtp
-- Works locally or on hosts that allow SMTP
-- Render free services block common SMTP ports
+Do not use SMTP on Render free services.
 """
 
 import smtplib
@@ -53,53 +50,78 @@ def send_verification_email(to_email: str, code: str) -> None:
         )
         return
 
-    if transport == "resend":
-        send_email_with_resend(to_email, code)
+    if transport == "brevo":
+        send_email_with_brevo(to_email, code)
         return
 
     if transport == "smtp":
         send_email_with_smtp(to_email, code)
         return
 
-    raise RuntimeError(
-        "MAIL_TRANSPORT must be 'console', 'resend', or 'smtp'."
-    )
+    raise RuntimeError("MAIL_TRANSPORT must be 'console', 'brevo', or 'smtp'.")
 
 
-def send_email_with_resend(to_email: str, code: str) -> None:
-    if not settings.RESEND_API_KEY:
-        raise RuntimeError("RESEND_API_KEY is missing.")
+def send_email_with_brevo(to_email: str, code: str) -> None:
+    if not settings.BREVO_API_KEY:
+        raise RuntimeError("BREVO_API_KEY is missing.")
 
     if not settings.MAIL_FROM:
         raise RuntimeError("MAIL_FROM is missing.")
 
     payload = {
-        "from": settings.MAIL_FROM,
-        "to": [to_email],
+        "sender": {
+            "name": "MediMind",
+            "email": _extract_email_from_mail_from(settings.MAIL_FROM),
+        },
+        "to": [
+            {
+                "email": to_email,
+            }
+        ],
         "subject": "Your MediMind verification code",
-        "text": _email_text(code),
+        "textContent": _email_text(code),
     }
 
     headers = {
-        "Authorization": f"Bearer {settings.RESEND_API_KEY}",
-        "Content-Type": "application/json",
+        "accept": "application/json",
+        "api-key": settings.BREVO_API_KEY,
+        "content-type": "application/json",
     }
 
     try:
         with httpx.Client(timeout=20) as client:
             response = client.post(
-                "https://api.resend.com/emails",
+                "https://api.brevo.com/v3/smtp/email",
                 json=payload,
                 headers=headers,
             )
 
         if response.status_code >= 400:
-            print("RESEND_EMAIL_ERROR:", response.status_code, response.text)
-            raise RuntimeError("Email could not be sent through Resend.")
+            print("BREVO_EMAIL_ERROR_STATUS:", response.status_code)
+            print("BREVO_EMAIL_ERROR_BODY:", response.text)
+            raise RuntimeError("Email could not be sent through Brevo.")
 
     except Exception as exc:
-        print("RESEND_EMAIL_FAILED:", repr(exc))
-        raise RuntimeError("Email could not be sent through Resend.") from exc
+        print("BREVO_EMAIL_FAILED:", repr(exc))
+        raise RuntimeError("Email could not be sent through Brevo.") from exc
+
+
+def _extract_email_from_mail_from(mail_from: str) -> str:
+    """
+    Accepts:
+    - no-reply@example.com
+    - MediMind <no-reply@example.com>
+
+    Returns:
+    - no-reply@example.com
+    """
+
+    value = mail_from.strip()
+
+    if "<" in value and ">" in value:
+        return value.split("<", 1)[1].split(">", 1)[0].strip()
+
+    return value
 
 
 def send_email_with_smtp(to_email: str, code: str) -> None:
@@ -122,5 +144,5 @@ def send_email_with_smtp(to_email: str, code: str) -> None:
     except Exception as exc:
         print("SMTP_EMAIL_FAILED:", repr(exc))
         raise RuntimeError(
-            "Email could not be sent. Please check SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM, and SMTP_TLS."
+            "Email could not be sent. Please check SMTP settings."
         ) from exc

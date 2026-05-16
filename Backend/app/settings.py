@@ -48,8 +48,8 @@ class Settings(BaseSettings):
     # Set this to true on Render only while testing if you want codes in logs.
     ALLOW_CONSOLE_EMAIL_IN_PROD: bool = False
 
-    # Resend email API
-    RESEND_API_KEY: str = ""
+    # BREVO email API
+    BREVO_API_KEY: str = ""
 
     # SMTP email settings
     SMTP_HOST: str = ""
@@ -80,7 +80,7 @@ class Settings(BaseSettings):
                 and not self.ALLOW_CONSOLE_EMAIL_IN_PROD
             ):
                 raise ValueError(
-                    "MAIL_TRANSPORT=console is blocked in prod. "
+                    "MAIL_TRANSPORT=console is not allowed in prod. Use MAIL_TRANSPORT=brevo."
                     "Use MAIL_TRANSPORT=resend for real email, or set "
                     "ALLOW_CONSOLE_EMAIL_IN_PROD=true temporarily for testing."
                 )
