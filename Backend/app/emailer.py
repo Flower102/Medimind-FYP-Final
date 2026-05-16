@@ -70,7 +70,7 @@ def send_email_with_brevo(to_email: str, code: str) -> None:
 
     payload = {
         "sender": {
-            "name": settings.MAIL_FROM_NAME or "MediMind Lite",
+            "name": getattr(settings, "MAIL_FROM_NAME", "MediMind Lite"),
             "email": settings.MAIL_FROM,
         },
         "to": [
