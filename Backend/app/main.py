@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from . import models
 from .schemas import (
     SignUpIn,
     SignInIn,
@@ -70,7 +71,7 @@ oauth.register(
 )
 app = FastAPI(title="MediMind Backend")
 
-
+Base.metadata.create_all(bind=engine)
 # ---------------------------------------------------------------------
 # Plain-English API error messages
 # ---------------------------------------------------------------------
