@@ -33,13 +33,13 @@ class User(Base):
 
     verify_code_hash = Column(String(128), nullable=True)
     verify_code_expires_at = Column(DateTime, nullable=True)
-    verify_attempts = Column(Integer, nullable=False, default=0, server_default=text("false"))
+    verify_attempts = Column(Integer, nullable=False, default=0, server_default=text("0"))
 
     reset_code_hash = Column(String(128), nullable=True)
     reset_code_expires_at = Column(DateTime, nullable=True)
-    reset_attempts = Column(Integer, nullable=False, default=0, server_default=text("false"))
+    reset_attempts = Column(Integer, nullable=False, default=0, server_default=text("0"))
 
-    failed_login_attempts = Column(Integer, nullable=False, default=0, server_default=text("false"))
+    failed_login_attempts = Column(Integer, nullable=False, default=0, server_default=text("0"))
     lockout_until = Column(DateTime, nullable=True)
 
     auth_provider = Column(String(30), nullable=False, default="local", server_default="local")
