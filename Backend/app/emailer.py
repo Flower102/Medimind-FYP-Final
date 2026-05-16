@@ -62,22 +62,12 @@ def send_verification_email(to_email: str, code: str) -> None:
 
 
 def send_email_with_brevo(to_email: str, code: str) -> None:
-    if not settings.BREVO_API_KEY:
-        raise RuntimeError("BREVO_API_KEY is missing.")
-
-    if not settings.MAIL_FROM:
-        raise RuntimeError("MAIL_FROM is missing.")
-
     payload = {
         "sender": {
             "name": getattr(settings, "MAIL_FROM_NAME", "MediMind Lite"),
             "email": settings.MAIL_FROM,
         },
-        "to": [
-            {
-                "email": to_email,
-            }
-        ],
+        "to": [{"email": to_email}],
         "subject": "Your MediMind verification code",
         "textContent": _email_text(code),
     }
@@ -88,25 +78,17 @@ def send_email_with_brevo(to_email: str, code: str) -> None:
         "content-type": "application/json",
     }
 
-    try:
-        with httpx.Client(timeout=20) as client:
-            response = client.post(
-                "https://api.brevo.com/v3/smtp/email",
-                json=payload,
-                headers=headers,
-            )
+    with httpx.Client(timeout=20) as client:
+        response = client.post(
+            "https://api.brevo.com/v3/smtp/email",
+            json=payload,
+            headers=headers,
+        )
 
-        if response.status_code >= 400:
-            print("BREVO_EMAIL_ERROR_STATUS:", response.status_code)
-            print("BREVO_EMAIL_ERROR_BODY:", response.text)
-            raise RuntimeError("Email could not be sent through Brevo.")
+    print("BREVO_EMAIL_STATUS:", response.status_code, flush=True)
+    print("BREVO_EMAIL_BODY:", response.text, flush=True)
 
-        print("BREVO_EMAIL_SENT:", response.status_code, response.text)
-
-    except Exception as exc:
-        print("BREVO_EMAIL_FAILED:", repr(exc))
-        raise RuntimeError("Email could not be sent through Brevo.") from exc
-
+    response.raise_for_status()
 
 def _extract_email_from_mail_from(mail_from: str) -> str:
     """

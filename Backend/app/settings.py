@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     ENV: str = "dev"
 
-    DATABASE_URL: str = "sqlite:///./medimind.db"
+    DATABASE_URL: str = "postgresql+psycopg2://postgres.njmfynsncjdgyodmshxc:Myfamily12akora@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require"
 
     SECRET_KEY: str = "CHANGE_ME"
     SESSION_SECRET_KEY: str = "CHANGE_ME_SESSION_SECRET"
