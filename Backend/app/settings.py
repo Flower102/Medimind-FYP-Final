@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     # smtp = real SMTP email
     # resend = real email through Resend HTTP API
     MAIL_TRANSPORT: str = "console"
-    MAIL_FROM: str = "no-reply@localhost"
+    MAIL_FROM: str = "MediMind <onboarding@resend.dev>"
 
     # Temporary safety switch:
     # Set this to true on Render only while testing if you want codes in logs.
