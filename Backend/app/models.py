@@ -29,17 +29,17 @@ class User(Base):
     display_name = Column(String(150), nullable=True)
     avatar_url = Column(String(500), nullable=True)
 
-    is_verified = Column(Boolean, nullable=False, default=False, server_default=text("0"))
+    is_verified = Column(Boolean, nullable=False, default=False, server_default=text("false"))
 
     verify_code_hash = Column(String(128), nullable=True)
     verify_code_expires_at = Column(DateTime, nullable=True)
-    verify_attempts = Column(Integer, nullable=False, default=0, server_default=text("0"))
+    verify_attempts = Column(Integer, nullable=False, default=0, server_default=text("false"))
 
     reset_code_hash = Column(String(128), nullable=True)
     reset_code_expires_at = Column(DateTime, nullable=True)
-    reset_attempts = Column(Integer, nullable=False, default=0, server_default=text("0"))
+    reset_attempts = Column(Integer, nullable=False, default=0, server_default=text("false"))
 
-    failed_login_attempts = Column(Integer, nullable=False, default=0, server_default=text("0"))
+    failed_login_attempts = Column(Integer, nullable=False, default=0, server_default=text("false"))
     lockout_until = Column(DateTime, nullable=True)
 
     auth_provider = Column(String(30), nullable=False, default="local", server_default="local")
@@ -105,7 +105,7 @@ class Note(Base):
 
     reflection = Column(Text, nullable=True)
     confidence = Column(Integer, nullable=False, default=5, server_default=text("5"))
-    is_favorite = Column(Boolean, nullable=False, default=False, server_default=text("0"))
+    is_favorite = Column(Boolean, nullable=False, default=False, server_default=text("false"))
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -146,7 +146,7 @@ class ChatSession(Base):
         Boolean,
         nullable=False,
         default=False,
-        server_default=text("0"),
+        server_default=text("false"),
     )
 
     # direct_chat = created directly from Chatbots page
@@ -231,7 +231,7 @@ class QuizAttempt(Base):
     question_count = Column(Integer, nullable=False)
     reveal_mode = Column(String(20), nullable=False, default="end")
 
-    timer_enabled = Column(Boolean, nullable=False, default=False, server_default=text("0"))
+    timer_enabled = Column(Boolean, nullable=False, default=False, server_default=text("false"))
     time_limit_seconds = Column(Integer, nullable=True)
     time_taken_seconds = Column(Integer, nullable=True)
 
