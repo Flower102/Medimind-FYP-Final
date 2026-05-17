@@ -158,17 +158,16 @@ class GeneratedQuiz(BaseModel):
 def validate_question_count(question_count: int) -> None:
     """
     Keep quiz choices controlled.
-
-    This matches the frontend buttons:
-    10, 15, or 20 questions.
+    Only 10, 15, or 20 questions are allowed.
     """
 
-    raise_api_error(
-    status.HTTP_404_NOT_FOUND,
-    "QUIZ_ATTEMPT_NOT_FOUND",
-    "This quiz attempt could not be found.",
-    "Please return to Learning Workspace or Progress and open the quiz again.",
-)
+    if question_count not in (10, 15, 20):
+        raise_api_error(
+            status.HTTP_400_BAD_REQUEST,
+            "QUIZ_INVALID_QUESTION_COUNT",
+            "The quiz question count is not valid.",
+            "Please choose 10, 15, or 20 questions and try again.",
+        )
 
 
 def get_attempt_or_404(
