@@ -355,7 +355,7 @@ export default function ForgotPasswordPage() {
       );
       setStep(2);
     } catch (err) {
-      setError(getErrorMessage(err instanceof Error ? err.message : "UNKNOWN_ERROR", tt));
+      setError(err instanceof Error ? err.message : tt("forgot.error.unknown", "Something went wrong. Please try again."));
     } finally {
       setBusy(false);
     }
