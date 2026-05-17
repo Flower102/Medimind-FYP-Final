@@ -230,8 +230,8 @@ export default function ProgressPage() {
   const totalFavourites = summary.favouriteNotes + summary.favouriteChats;
 
   const nextStepHref = summary.reminderNote?.id
-    ? `/learning-workspace?noteId=${encodeURIComponent(summary.reminderNote.id)}`
-    : "/learning-workspace";
+    ? `/learning_workspace?noteId=${encodeURIComponent(summary.reminderNote.id)}`
+    : "/learning_workspace";
 
   return (
     <div className="space-y-8 pb-10">

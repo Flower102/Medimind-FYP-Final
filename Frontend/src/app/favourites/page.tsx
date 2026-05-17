@@ -506,7 +506,7 @@ function FavouriteNoteCard({
 
       <div className="mt-4 flex justify-end gap-3">
         <Link
-          href={`/learning-workspace?noteId=${note.id}`}
+          href={`/learning_workspace?noteId=${note.id}`}
           className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900"
         >
           {tx("common.view", "View")}

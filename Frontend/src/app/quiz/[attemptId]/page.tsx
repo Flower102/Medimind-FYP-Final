@@ -235,7 +235,7 @@ const backHref =
     ? "/dashboard"
     : fromPage === "progress"
       ? "/progress"
-      : "/learning-workspace";
+      : "/learning_workspace";
 
 const backLabel =
   fromPage === "dashboard"
@@ -790,7 +790,7 @@ const backLabel =
               </Link>
 
               <Link
-                href="/learning-workspace?openQuiz=true"
+                href="/learning_workspace?openQuiz=true"
                 className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
               >
                 Start another quiz
