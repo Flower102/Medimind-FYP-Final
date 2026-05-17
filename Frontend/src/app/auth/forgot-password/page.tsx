@@ -342,8 +342,10 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
 
-     const apiError = await readApiError(res);
-      throw new Error(apiError.message || getErrorMessage(apiError.code, tt));
+     if (!res.ok) {
+        const apiError = await readApiError(res);
+        throw new Error(apiError.message || getErrorMessage(apiError.code, tt));
+      }
 
       setMessage(
         tt(
@@ -382,8 +384,13 @@ export default function ForgotPasswordPage() {
         }),
       });
 
-      const apiError = await readApiError(res);
-      throw new Error(apiError.message || getErrorMessage(apiError.code, tt));
+      if (!res.ok) {
+        const apiError = await readApiError(res);
+        throw new Error(apiError.message || getErrorMessage(apiError.code, tt));
+      }
+
+      setMessage(tt("forgot.success.codeVerified", "Code verified. Please create a new password."));
+      setStep(3);
 
      
     } catch (err) {
@@ -434,13 +441,16 @@ export default function ForgotPasswordPage() {
         }),
       });
 
+      if (!res.ok) {
       const apiError = await readApiError(res);
       throw new Error(apiError.message || getErrorMessage(apiError.code, tt));
+    }
 
+    setMessage(tt("forgot.success.passwordReset", "Your password has been reset. You can now sign in."));
 
-      window.setTimeout(() => {
-        router.push("/auth/signin");
-      }, 1200);
+    window.setTimeout(() => {
+      router.push("/auth/signin");
+    }, 1200);
     } catch (err) {
       setError(getErrorMessage(err instanceof Error ? err.message : "UNKNOWN_ERROR", tt));
     } finally {
