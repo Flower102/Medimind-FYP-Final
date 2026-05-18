@@ -43,4 +43,8 @@ itsdangerous
 python-multipart
 supabase==2.30.0
 httpx==0.28.1
+<<<<<<< HEAD
 psycopg2-binary==2.9.10
+=======
+psycopg2-binary==2.9.10
+>>>>>>> 19a4e19 (Add supabase dependency)
