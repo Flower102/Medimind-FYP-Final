@@ -66,6 +66,10 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:3000/api/backend/auth/google/callback"
+    
+    SUPABASE_URL: str | None = None
+    SUPABASE_SERVICE_ROLE_KEY: str | None = None
+    SUPABASE_AVATAR_BUCKET: str = "avatar"
 
     @model_validator(mode="after")
     def _normalise_and_validate(self):
