@@ -194,10 +194,18 @@ export default function SettingsPage() {
   const [highContrast, setHighContrast] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [textSize, setTextSize] = useState<TextSize>("normal");
+
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  // NEW: This stores the validation message for the delete-account password field.
+  // It allows the message "Please enter your current password." to show inside the modal.
+  const [deletePasswordError, setDeletePasswordError] = useState("");
+
+  // NEW: This stores the validation message for the DELETE confirmation field.
+  const [deleteConfirmError, setDeleteConfirmError] = useState("");
 
   const showSavedMessage = useCallback((message: string) => {
     setSavedMessage(message);
@@ -399,30 +407,41 @@ export default function SettingsPage() {
   }, [router]);
 
   const handleDeleteAccount = useCallback(async () => {
+    // NEW: Clear old validation messages every time the user clicks the delete button.
     setError("");
+    setDeletePasswordError("");
+    setDeleteConfirmError("");
 
-    if (deleteConfirmText.trim() !== "DELETE") {
-      setError("Please type DELETE to confirm account deletion.");
+    // NEW: Frontend validation for the password box.
+    // If the user leaves the password empty, the modal will show this message.
+    if (!deletePassword.trim()) {
+      setDeletePasswordError("Please enter your current password.");
       return;
     }
 
-    if (user?.email && !deletePassword && user.email.length > 0) {
-      // The backend will allow Google accounts without a password,
-      // but normal email/password accounts need this.
-      // Keeping this check light avoids blocking Google users incorrectly.
+    // NEW: This accepts DELETE even if the user typed delete, Delete, or dElEtE.
+    // The text is converted to uppercase before checking.
+    if (deleteConfirmText.trim().toUpperCase() !== "DELETE") {
+      setDeleteConfirmError("Please type DELETE to confirm account deletion.");
+      return;
     }
 
     setIsDeletingAccount(true);
 
     try {
       await deleteAccount({
-        current_password: deletePassword || undefined,
-        confirm_text: deleteConfirmText,
+        // NEW: Send the trimmed password to the backend.
+        current_password: deletePassword.trim(),
+
+        // NEW: Always send DELETE in uppercase to keep the backend check consistent.
+        confirm_text: deleteConfirmText.trim().toUpperCase(),
       });
 
       setDeleteModalOpen(false);
       setDeletePassword("");
       setDeleteConfirmText("");
+      setDeletePasswordError("");
+      setDeleteConfirmError("");
 
       router.push("/");
     } catch (err: unknown) {
@@ -430,7 +449,7 @@ export default function SettingsPage() {
     } finally {
       setIsDeletingAccount(false);
     }
-  }, [deleteConfirmText, deletePassword, router, user?.email]);
+  }, [deleteConfirmText, deletePassword, router]);
 
   if (isLoadingUser) {
     return (
@@ -744,17 +763,22 @@ export default function SettingsPage() {
           >
             {tx("settings.security.signOutAll", "Sign out all devices")}
           </button>
-          
+
           <button
             type="button"
-            onClick={() => setDeleteModalOpen(true)}
+            onClick={() => {
+              // NEW: Open the delete modal and clear old delete validation messages.
+              setDeletePasswordError("");
+              setDeleteConfirmError("");
+              setDeleteModalOpen(true);
+            }}
             disabled={isSigningOut || isDeletingAccount}
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-300 bg-red-50 px-5 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
           >
             <Trash2 className="h-4 w-4" />
             Delete account
           </button>
-          
+
           {deleteModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
               <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
@@ -781,7 +805,16 @@ export default function SettingsPage() {
                   <PasswordField
                     label="Current password"
                     value={deletePassword}
-                    onChange={setDeletePassword}
+                    onChange={(value) => {
+                      // NEW: Update the password field.
+                      setDeletePassword(value);
+
+                      // NEW: Remove the password error as soon as the user starts typing.
+                      if (value.trim()) {
+                        setDeletePasswordError("");
+                      }
+                    }}
+                    error={deletePasswordError}
                   />
 
                   <label className="block rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
@@ -791,10 +824,27 @@ export default function SettingsPage() {
 
                     <input
                       value={deleteConfirmText}
-                      onChange={(event) => setDeleteConfirmText(event.target.value)}
+                      onChange={(event) => {
+                        // NEW: Automatically converts anything typed here into uppercase.
+                        // Example: delete becomes DELETE.
+                        const upperCaseValue = event.target.value.toUpperCase();
+
+                        setDeleteConfirmText(upperCaseValue);
+
+                        // NEW: Remove the DELETE error once the user types DELETE correctly.
+                        if (upperCaseValue.trim() === "DELETE") {
+                          setDeleteConfirmError("");
+                        }
+                      }}
                       placeholder="DELETE"
-                      className="mt-2 w-full bg-transparent text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-50 dark:placeholder:text-slate-500"
+                      className="mt-2 w-full bg-transparent text-sm font-medium uppercase text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-50 dark:placeholder:text-slate-500"
                     />
+
+                    {deleteConfirmError && (
+                      <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-300">
+                        {deleteConfirmError}
+                      </p>
+                    )}
                   </label>
                 </div>
 
@@ -805,6 +855,10 @@ export default function SettingsPage() {
                       setDeleteModalOpen(false);
                       setDeletePassword("");
                       setDeleteConfirmText("");
+
+                      // NEW: Clear validation errors when the user closes the modal.
+                      setDeletePasswordError("");
+                      setDeleteConfirmError("");
                     }}
                     disabled={isDeletingAccount}
                     className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -816,7 +870,8 @@ export default function SettingsPage() {
                     type="button"
                     onClick={handleDeleteAccount}
                     disabled={
-                      isDeletingAccount || deleteConfirmText.trim() !== "DELETE"
+                      isDeletingAccount ||
+                      deleteConfirmText.trim().toUpperCase() !== "DELETE"
                     }
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -830,8 +885,7 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
-          )}          
-
+          )}
         </div>
 
         <p className="mt-4 text-xs leading-5 text-slate-500 dark:text-slate-400">
@@ -904,10 +958,16 @@ function PasswordField({
   label,
   value,
   onChange,
+  error,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+
+  // NEW: Optional error message.
+  // This keeps the old PasswordField working everywhere else,
+  // but allows the delete-account modal to show a password validation message.
+  error?: string;
 }) {
   return (
     <label className="block rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
@@ -921,6 +981,12 @@ function PasswordField({
         onChange={(event) => onChange(event.target.value)}
         className="mt-2 w-full bg-transparent text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-50 dark:placeholder:text-slate-500"
       />
+
+      {error && (
+        <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-300">
+          {error}
+        </p>
+      )}
     </label>
   );
 }
