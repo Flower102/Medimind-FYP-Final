@@ -1,4 +1,4 @@
-﻿annotated-doc==0.0.4
+annotated-doc==0.0.4
 annotated-types==0.7.0
 anyio==4.12.1
 bcrypt==3.2.2
@@ -36,10 +36,11 @@ typing-inspection==0.4.2
 typing_extensions==4.15.0
 uvicorn==0.40.0
 watchfiles==1.1.1
-websockets==16.0
+websockets==15.0.1
 wrapt==2.1.1
 authlib
 itsdangerous
-psycopg2-binary==2.9.10
-httpx
 python-multipart
+supabase==2.30.0
+httpx==0.28.1
+psycopg2-binary==2.9.10
