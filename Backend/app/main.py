@@ -18,6 +18,7 @@ from .schemas import (
     OkOut,
     UserProfileUpdateIn,
     ChangePasswordIn,
+    DeleteAccountIn,
     ForgotPasswordIn,
     VerifyResetCodeIn,
     ResetPasswordIn,
@@ -55,7 +56,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-
+from supabase import create_client
 
 #Add OAuth
 oauth = OAuth()
@@ -146,6 +147,11 @@ ERROR_MESSAGES = {
     "AVATAR_INVALID_FILE_TYPE": "Please upload a valid image file. Supported formats are JPG, PNG, and WebP.",
     "AVATAR_FILE_TOO_LARGE": "The profile picture is too large. Please upload an image smaller than 2 MB.",
     "USERNAME_ALREADY_TAKEN": "This username is already taken. Please choose another one.",
+
+    #/Delete Account
+    "AUTH_DELETE_CONFIRM_REQUIRED": "Please type DELETE to confirm account deletion.",
+    "AUTH_DELETE_PASSWORD_REQUIRED": "Please enter your current password to delete your account.",
+    "AUTH_DELETE_PASSWORD_INCORRECT": "The current password is incorrect. Your account was not deleted.",
 }
 
 
@@ -1159,7 +1165,10 @@ async def upload_avatar(
     if avatar.content_type not in allowed_types:
         raise HTTPException(
             status_code=400,
-            detail={"code": "AVATAR_INVALID_FILE_TYPE"},
+            detail={
+                "code": "AVATAR_INVALID_FILE_TYPE",
+                "message": "Please upload a JPG, PNG, or WebP image.",
+            },
         )
 
     contents = await avatar.read()
@@ -1167,34 +1176,112 @@ async def upload_avatar(
     if len(contents) > 2 * 1024 * 1024:
         raise HTTPException(
             status_code=400,
-            detail={"code": "AVATAR_FILE_TOO_LARGE"},
+            detail={
+                "code": "AVATAR_FILE_TOO_LARGE",
+                "message": "Please upload an image smaller than 2 MB.",
+            },
         )
 
-    old_avatar_url = current_user.avatar_url
+    if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_ROLE_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "AVATAR_STORAGE_NOT_CONFIGURED",
+                "message": "Avatar storage is not configured on the backend.",
+            },
+        )
 
     extension = allowed_types[avatar.content_type]
     filename = f"user-{current_user.id}-{uuid.uuid4().hex}{extension}"
-    file_path = UPLOAD_DIR / filename
+    storage_path = f"avatars/{filename}"
 
-    with open(file_path, "wb") as f:
-        f.write(contents)
+    supabase = create_client(
+        settings.SUPABASE_URL,
+        settings.SUPABASE_SERVICE_ROLE_KEY,
+    )
 
-    current_user.avatar_url = f"/uploads/avatars/{filename}"
+    supabase.storage.from_(settings.SUPABASE_AVATAR_BUCKET).upload(
+        path=storage_path,
+        file=contents,
+        file_options={
+            "content-type": avatar.content_type,
+            "upsert": "true",
+        },
+    )
+
+    public_url = supabase.storage.from_(
+        settings.SUPABASE_AVATAR_BUCKET
+    ).get_public_url(storage_path)
+
+    current_user.avatar_url = public_url
 
     db.commit()
     db.refresh(current_user)
 
-    if old_avatar_url:
-        old_filename = Path(old_avatar_url).name
-        old_file_path = UPLOAD_DIR / old_filename
-
-        if old_file_path.exists() and old_file_path.is_file():
-            try:
-                old_file_path.unlink()
-            except OSError:
-                pass
-
     return current_user
+
+@app.delete("/auth/me", response_model=OkOut)
+def delete_my_account(
+    payload: DeleteAccountIn,
+    res: Response,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Permanently deletes the logged-in user's account and learning data.
+
+    For normal email/password accounts:
+    - current password is required.
+
+    For Google accounts:
+    - password is not required because the user may not have a MediMind password.
+    - typing DELETE is still required.
+    """
+
+    if payload.confirm_text.strip() != "DELETE":
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "AUTH_DELETE_CONFIRM_REQUIRED"},
+        )
+
+    is_google_account = current_user.auth_provider == "google"
+
+    if not is_google_account:
+        if not payload.current_password:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "AUTH_DELETE_PASSWORD_REQUIRED"},
+            )
+
+        if not verify_password(payload.current_password, current_user.password_hash):
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "AUTH_DELETE_PASSWORD_INCORRECT"},
+            )
+
+    # Delete quiz attempts first so related quiz questions are removed cleanly.
+    quiz_attempts = (
+        db.query(models.QuizAttempt)
+        .filter(models.QuizAttempt.user_id == current_user.id)
+        .all()
+    )
+
+    for attempt in quiz_attempts:
+        db.delete(attempt)
+
+    # Revoke refresh tokens before deleting the user.
+    revoke_all_refresh_tokens(db, current_user.id, datetime.utcnow())
+
+    # Delete the user.
+    # User relationships should remove notes, chat sessions, chat messages,
+    # and refresh tokens through cascade rules.
+    db.delete(current_user)
+    db.commit()
+
+    clear_auth_cookies(res)
+
+    return OkOut()
+
 
 
 

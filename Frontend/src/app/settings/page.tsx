@@ -31,6 +31,8 @@ import {
   UserCircle,
   Volume2,
   VolumeX,
+  AlertTriangle,
+  Trash2,
 } from "lucide-react";
 
 import { useI18n } from "@/src/i18n/I18nProvider";
@@ -104,6 +106,16 @@ async function signOut() {
 async function signOutAllDevices() {
   return apiFetch<{ ok: boolean }>("/auth/signout-all", {
     method: "POST",
+  });
+}
+
+async function deleteAccount(payload: {
+  current_password?: string;
+  confirm_text: string;
+}) {
+  return apiFetch<{ ok: boolean }>("/auth/me", {
+    method: "DELETE",
+    json: payload,
   });
 }
 
@@ -182,6 +194,10 @@ export default function SettingsPage() {
   const [highContrast, setHighContrast] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [textSize, setTextSize] = useState<TextSize>("normal");
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const showSavedMessage = useCallback((message: string) => {
     setSavedMessage(message);
@@ -381,6 +397,40 @@ export default function SettingsPage() {
       setIsSigningOut(false);
     }
   }, [router]);
+
+  const handleDeleteAccount = useCallback(async () => {
+    setError("");
+
+    if (deleteConfirmText.trim() !== "DELETE") {
+      setError("Please type DELETE to confirm account deletion.");
+      return;
+    }
+
+    if (user?.email && !deletePassword && user.email.length > 0) {
+      // The backend will allow Google accounts without a password,
+      // but normal email/password accounts need this.
+      // Keeping this check light avoids blocking Google users incorrectly.
+    }
+
+    setIsDeletingAccount(true);
+
+    try {
+      await deleteAccount({
+        current_password: deletePassword || undefined,
+        confirm_text: deleteConfirmText,
+      });
+
+      setDeleteModalOpen(false);
+      setDeletePassword("");
+      setDeleteConfirmText("");
+
+      router.push("/");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  }, [deleteConfirmText, deletePassword, router, user?.email]);
 
   if (isLoadingUser) {
     return (
@@ -694,6 +744,94 @@ export default function SettingsPage() {
           >
             {tx("settings.security.signOutAll", "Sign out all devices")}
           </button>
+          
+          <button
+            type="button"
+            onClick={() => setDeleteModalOpen(true)}
+            disabled={isSigningOut || isDeletingAccount}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-300 bg-red-50 px-5 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete account
+          </button>
+          
+          {deleteModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
+              <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300">
+                    <AlertTriangle className="h-6 w-6" />
+                  </div>
+
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
+                      Delete account
+                    </h2>
+
+                    <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      This will permanently delete your MediMind account, including
+                      your saved notes, reflections, confidence ratings, quizzes,
+                      favourites, chat sessions, and login sessions. This action
+                      cannot be undone.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 space-y-4">
+                  <PasswordField
+                    label="Current password"
+                    value={deletePassword}
+                    onChange={setDeletePassword}
+                  />
+
+                  <label className="block rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Type DELETE to confirm
+                    </div>
+
+                    <input
+                      value={deleteConfirmText}
+                      onChange={(event) => setDeleteConfirmText(event.target.value)}
+                      placeholder="DELETE"
+                      className="mt-2 w-full bg-transparent text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-50 dark:placeholder:text-slate-500"
+                    />
+                  </label>
+                </div>
+
+                <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeleteModalOpen(false);
+                      setDeletePassword("");
+                      setDeleteConfirmText("");
+                    }}
+                    disabled={isDeletingAccount}
+                    className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    disabled={
+                      isDeletingAccount || deleteConfirmText.trim() !== "DELETE"
+                    }
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isDeletingAccount ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    Confirm to delete this account
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}          
+
         </div>
 
         <p className="mt-4 text-xs leading-5 text-slate-500 dark:text-slate-400">
