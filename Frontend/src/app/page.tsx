@@ -524,6 +524,7 @@ export default function LandingPage() {
               View features
             </Link>
           </div>
+          
         </div>
       </section>
 

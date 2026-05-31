@@ -30,52 +30,36 @@ export default function ConditionOfUsePage() {
 
   const sections = [
     {
-      title: safeText(
-        t("conditions.educationalTitle"),
-        "conditions.educationalTitle",
-        "Educational use only"
-      ),
-      body: safeText(
-        t("conditions.educationalBody"),
-        "conditions.educationalBody",
-        "MediMind Lite is designed to support learning and understanding. It does not provide medical advice, diagnosis, or treatment."
-      ),
+      title: "Educational use only",
+      body: "MediMind Lite is designed to support learning and understanding. It does not provide medical advice, diagnosis or treatment, and it is not a medical device.",
     },
     {
-      title: safeText(
-        t("conditions.medicalAdviceTitle"),
-        "conditions.medicalAdviceTitle",
-        "Not a replacement for healthcare professionals"
-      ),
-      body: safeText(
-        t("conditions.medicalAdviceBody"),
-        "conditions.medicalAdviceBody",
-        "Always speak with a qualified healthcare professional about symptoms, medication, treatment decisions, or personal health concerns."
-      ),
+      title: "Not a replacement for healthcare professionals",
+      body: "Always speak with a qualified healthcare professional about symptoms, medication, treatment decisions or any personal health concern. Never delay or ignore professional medical advice because of something you have read or generated here. In an emergency, contact your local emergency services.",
     },
     {
-      title: safeText(
-        t("conditions.userResponsibilityTitle"),
-        "conditions.userResponsibilityTitle",
-        "Your responsibility"
-      ),
-      body: safeText(
-        t("conditions.userResponsibilityBody"),
-        "conditions.userResponsibilityBody",
-        "You are responsible for the information you choose to enter and for using the platform safely and appropriately."
-      ),
+      title: "How the AI features work",
+      body: "Some features, such as summaries and the learning chatbot, use a third-party artificial intelligence service (OpenAI) to generate responses. When you use these features, the text you submit is sent to that provider so a reply can be produced. AI-generated content is intended to support learning only and may be incomplete or incorrect.",
     },
     {
-      title: safeText(
-        t("conditions.accuracyTitle"),
-        "conditions.accuracyTitle",
-        "Accuracy of information"
-      ),
-      body: safeText(
-        t("conditions.accuracyBody"),
-        "conditions.accuracyBody",
-        "AI-supported explanations may not always be complete or correct. Check important information with reliable sources or a healthcare professional."
-      ),
+      title: "Accuracy of information",
+      body: "AI-supported explanations may not always be complete or accurate. Always check important information against reliable sources, or with a healthcare professional, before acting on it.",
+    },
+    {
+      title: "Your account and security",
+      body: "You are responsible for keeping your account details and password secure, and for any activity that takes place under your account. Please choose a strong password and do not share your login details.",
+    },
+    {
+      title: "Your responsibility",
+      body: "You are responsible for the information you choose to enter and for using the platform safely and appropriately. Please avoid entering information that identifies other people, and do not use the service for anything unlawful or harmful.",
+    },
+    {
+      title: "Availability and changes",
+      body: "MediMind Lite is an academic project and is provided \u201Cas is\u201D, without guarantees of availability, accuracy or fitness for a particular purpose. Features and these conditions may change as the project develops.",
+    },
+    {
+      title: "Contact",
+      body: "If you have any questions about these conditions, contact us at medimindlite@gmail.com.",
     },
   ];
 

@@ -663,11 +663,15 @@ async def google_callback(
 
     try:
         token = await oauth.google.authorize_access_token(request)
-    except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail={"code": "GOOGLE_AUTH_FAILED"},
-        )
+    except Exception as exc:
+            print("GOOGLE_AUTH_REAL_ERROR:", repr(exc), flush=True)
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "GOOGLE_AUTH_FAILED",
+                    "message": "Google sign-in could not be completed. Please try again.",
+                },
+            )
 
     user_info = token.get("userinfo")
 
@@ -1288,9 +1292,6 @@ def delete_my_account(
 @app.get("/protected", response_model=OkOut)
 def protected_route(current_user: User = Depends(get_current_user)):
     return OkOut()
-
-
-
 
 print("ENV LOADED:", settings.ENV)
 print("CORS_ORIGINS:", settings.CORS_ORIGINS)

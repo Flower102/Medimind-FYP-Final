@@ -26,52 +26,48 @@ export default function PrivacyTermsPage() {
 
   const sections = [
     {
-      title: safeText(
-        t("privacy.collectTitle"),
-        "privacy.collectTitle",
-        "Information we collect"
-      ),
-      body: safeText(
-        t("privacy.collectBody"),
-        "privacy.collectBody",
-        "MediMind Lite may collect account details, learning content you choose to enter, and basic usage information needed to provide the service."
-      ),
+      title: "Who we are",
+      body: "MediMind Lite is an educational web application created as part of an academic project. It is provided for learning and demonstration purposes.",
     },
     {
-      title: safeText(
-        t("privacy.whyTitle"),
-        "privacy.whyTitle",
-        "Why we use information"
-      ),
-      body: safeText(
-        t("privacy.whyBody"),
-        "privacy.whyBody",
-        "We use information to provide educational learning features, keep your account working, improve the experience, and support safety and security."
-      ),
+      title: "What we collect",
+      list: [
+        "Account details you provide, such as your name and email address.",
+        "Learning content you choose to create, such as notes, reflections, confidence ratings, quiz results and chat history.",
+        "Basic technical information needed to keep you signed in and to operate the service securely.",
+      ],
     },
     {
-      title: safeText(
-        t("privacy.securityTitle"),
-        "privacy.securityTitle",
-        "Security"
-      ),
-      body: safeText(
-        t("privacy.securityBody"),
-        "privacy.securityBody",
-        "We aim to protect your information using reasonable security measures. Avoid adding unnecessary sensitive information."
-      ),
+      title: "Why we collect it",
+      body: "We use this information to provide the service, support sign-in and authentication, save your history, display your dashboard and support your learning experience. Because some of the content you choose to enter may relate to your health, we treat it as sensitive. The basis for processing this content is your consent, which you give when you choose to create an account and save content.",
     },
     {
-      title: safeText(
-        t("privacy.rightsTitle"),
-        "privacy.rightsTitle",
-        "Your rights"
-      ),
-      body: safeText(
-        t("privacy.rightsBody"),
-        "privacy.rightsBody",
-        "You may request help with your account information or ask questions about how your information is handled."
-      ),
+      title: "How AI features use your information",
+      body: "When you request a summary or use the learning chatbot, the text you submit is sent to a third-party AI provider (OpenAI) so a response can be generated. We send only the content needed for that feature \u2014 such as your note and its reflection \u2014 and only when you actively request it. Because this content leaves our system, please avoid entering details that directly identify you or other people. The provider processes this text under its own terms, which you should review if you have any concerns.",
+    },
+    {
+      title: "Health-related information",
+      body: "You decide what to enter. The service does not require a medical record, and we recommend entering only what you are comfortable storing for learning purposes.",
+    },
+    {
+      title: "Security",
+      body: "Your password is stored as a secure hash, never in plain text. Access to your saved information is restricted to your signed-in account, and information is transmitted over a secure (HTTPS) connection.",
+    },
+    {
+      title: "How long we keep your information",
+      body: "We keep your account and learning content while your account is active. If you delete your account, your account and the content stored with it are removed.",
+    },
+    {
+      title: "Your rights",
+      body: "You can access the information held about you, correct your profile details, delete your notes, favourites and chat history, and delete your account and its associated data at any time from the Settings page. You can also withdraw consent by deleting your content or your account. If you need help, contact medimindlite@gmail.com.",
+    },
+    {
+      title: "Cookies and local storage",
+      body: "MediMind Lite uses only the cookies or local storage needed to keep you signed in and to remember your accessibility preferences (such as text size and theme). It does not use advertising or tracking cookies.",
+    },
+    {
+      title: "Contact",
+      body: "For any questions about this notice or your data, contact medimindlite@gmail.com.",
     },
   ];
 
