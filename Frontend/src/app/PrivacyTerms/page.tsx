@@ -90,9 +90,19 @@ export default function PrivacyTermsPage() {
                   {section.title}
                 </h2>
 
-                <p className="mt-2 leading-relaxed text-slate-600! dark:text-slate-200!">
-                  {section.body}
-                </p>
+                {section.body && (
+                  <p className="mt-2 leading-relaxed text-slate-600! dark:text-slate-200!">
+                    {section.body}
+                  </p>
+                )}
+
+                {section.list && (
+                  <ul className="mt-2 list-disc space-y-2 pl-6 leading-relaxed text-slate-600! dark:text-slate-200!">
+                    {section.list.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                )}
               </section>
             ))}
           </div>
