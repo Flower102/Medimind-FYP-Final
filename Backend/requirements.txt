@@ -1,4 +1,4 @@
-annotated-doc==0.0.4
+﻿annotated-doc==0.0.4
 annotated-types==0.7.0
 anyio==4.12.1
 bcrypt==3.2.2
@@ -43,8 +43,6 @@ itsdangerous
 python-multipart
 supabase==2.30.0
 httpx==0.28.1
-<<<<<<< HEAD
 psycopg2-binary==2.9.10
 =======
 psycopg2-binary==2.9.10
->>>>>>> 19a4e19 (Add supabase dependency)
