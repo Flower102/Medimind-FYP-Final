@@ -614,9 +614,7 @@ export default function ChatPage() {
     );
   }, []);
 
-  /**
-   * Loads an existing saved chat when the URL has ?chatId=...
-   */
+ 
   /**
  * Loads an existing saved chat when the URL has ?chatId=...
  */
@@ -813,7 +811,6 @@ export default function ChatPage() {
         } else {
           await saveMessageToBackend(activeSessionId, userMessage);
         }
-
         const payload: Parameters<typeof sendChatMessage>[0] = {
           messages: updatedMessages.map(toBackendMessage),
           ...(learningCtx?.note ? { note: learningCtx.note } : {}),
@@ -824,7 +821,6 @@ export default function ChatPage() {
             ? { confidence: learningCtx.confidence }
             : {}),
         };
-
         const res = await sendChatMessage(payload, filesToSend);
 
         const assistantMessage: Msg = {
@@ -834,12 +830,10 @@ export default function ChatPage() {
         };
 
         const finalMessages: Msg[] = [...updatedMessages, assistantMessage];
-
         setMessages(finalMessages);
-
         await saveMessageToBackend(activeSessionId, assistantMessage);
-
         scrollToEnd();
+
       } catch (error: unknown) {
         console.error("Chat send failed:", error);
 

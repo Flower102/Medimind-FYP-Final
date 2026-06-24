@@ -87,6 +87,40 @@ async function updateProfile(payload: {
   });
 }
 
+
+function getUserDisplayName(currentUser: CurrentUser) {
+  const displayName = currentUser.display_name?.trim();
+
+  if (displayName) return displayName;
+
+  const fullName = [currentUser.first_name, currentUser.surname]
+    .map((value) => value?.trim())
+    .filter(Boolean)
+    .join(" ");
+
+  return fullName || currentUser.email;
+}
+
+function notifyAccountUpdated(currentUser: CurrentUser) {
+  if (typeof window === "undefined") return;
+
+  const displayName = getUserDisplayName(currentUser);
+  // Keep a small display cache for account/sidebar components that read from localStorage.
+  // This does not store tokens or health notes.
+  window.localStorage.setItem("mm_display_name", displayName);
+  window.localStorage.setItem("mm_avatar_url", currentUser.avatar_url ?? "");
+
+  // Tell client components such as the sidebar/account modal to refresh their user display.
+  window.dispatchEvent(
+    new CustomEvent("mm:user-updated", {
+      detail: currentUser,
+    })
+  );
+
+  // Your app already uses this event for UI preference changes, so it is useful here too.
+  window.dispatchEvent(new Event("mm:storage"));
+}
+
 async function changePassword(payload: {
   current_password: string;
   new_password: string;
@@ -179,6 +213,7 @@ export default function SettingsPage() {
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const [error, setError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
 
   const [firstName, setFirstName] = useState("");
@@ -203,6 +238,9 @@ export default function SettingsPage() {
   // NEW: This stores the validation message for the delete-account password field.
   // It allows the message "Please enter your current password." to show inside the modal.
   const [deletePasswordError, setDeletePasswordError] = useState("");
+
+  // Stores a general delete-account error at the top of the modal.
+  const [deleteModalError, setDeleteModalError] = useState("");
 
   // NEW: This stores the validation message for the DELETE confirmation field.
   const [deleteConfirmError, setDeleteConfirmError] = useState("");
@@ -247,6 +285,28 @@ export default function SettingsPage() {
     setTextSize(getStoredTextSize());
   }, [loadUser]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    function handleUserUpdated(event: Event) {
+      const updatedUser = (event as CustomEvent<CurrentUser>).detail;
+
+      if (!updatedUser) {
+        loadUser();
+        return;
+      }
+
+      setUser(updatedUser);
+      syncUserForm(updatedUser);
+    }
+
+    window.addEventListener("mm:user-updated", handleUserUpdated);
+
+    return () => {
+      window.removeEventListener("mm:user-updated", handleUserUpdated);
+    };
+  }, [loadUser, syncUserForm]);
+
   const handleSaveProfile = useCallback(async () => {
     setIsSavingProfile(true);
     setError("");
@@ -260,6 +320,8 @@ export default function SettingsPage() {
 
       setUser(updatedUser);
       syncUserForm(updatedUser);
+      notifyAccountUpdated(updatedUser);
+      router.refresh();
 
       showSavedMessage(tx("settings.status.profileUpdated", "Profile updated."));
     } catch (err: unknown) {
@@ -267,18 +329,22 @@ export default function SettingsPage() {
     } finally {
       setIsSavingProfile(false);
     }
-  }, [displayName, firstName, showSavedMessage, surname, syncUserForm, tx]);
+  }, [displayName, firstName, router, showSavedMessage, surname, syncUserForm, tx]);
 
   const handleChangePassword = useCallback(async () => {
+    // Keep password errors inside the Change Password card.
     setError("");
+    setPasswordError("");
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setError(tx("settings.error.fillPasswordFields", "Fill in all password fields."));
+      setPasswordError(
+        tx("settings.error.fillPasswordFields", "Fill in all password fields.")
+      );
       return;
     }
 
     if (!validatePassword(newPassword)) {
-      setError(
+      setPasswordError(
         tx(
           "settings.error.weakPassword",
           "New password must be at least 8 characters and include uppercase, lowercase, one number, and one special character."
@@ -288,7 +354,7 @@ export default function SettingsPage() {
     }
 
     if (newPassword !== confirmPassword) {
-      setError(
+      setPasswordError(
         tx(
           "settings.error.passwordMismatch",
           "New password and confirm password do not match."
@@ -308,6 +374,7 @@ export default function SettingsPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      setPasswordError("");
 
       showSavedMessage(
         tx(
@@ -320,7 +387,7 @@ export default function SettingsPage() {
         router.push("/auth/signin");
       }, 1000);
     } catch (err: unknown) {
-      setError(getApiErrorMessage(err));
+      setPasswordError(getApiErrorMessage(err));
     } finally {
       setIsChangingPassword(false);
     }
@@ -407,22 +474,23 @@ export default function SettingsPage() {
   }, [router]);
 
   const handleDeleteAccount = useCallback(async () => {
-    // NEW: Clear old validation messages every time the user clicks the delete button.
+    // Keep delete-account errors inside the delete modal.
     setError("");
+    setDeleteModalError("");
     setDeletePasswordError("");
     setDeleteConfirmError("");
 
-    // NEW: Frontend validation for the password box.
-    // If the user leaves the password empty, the modal will show this message.
     if (!deletePassword.trim()) {
-      setDeletePasswordError("Please enter your current password.");
+      const message = "Please enter your current password before deleting your account.";
+      setDeleteModalError(message);
+      setDeletePasswordError("Current password is required.");
       return;
     }
 
-    // NEW: This accepts DELETE even if the user typed delete, Delete, or dElEtE.
-    // The text is converted to uppercase before checking.
     if (deleteConfirmText.trim().toUpperCase() !== "DELETE") {
-      setDeleteConfirmError("Please type DELETE to confirm account deletion.");
+      const message = "Please type DELETE exactly to confirm account deletion.";
+      setDeleteModalError(message);
+      setDeleteConfirmError("Type DELETE to confirm.");
       return;
     }
 
@@ -430,10 +498,7 @@ export default function SettingsPage() {
 
     try {
       await deleteAccount({
-        // NEW: Send the trimmed password to the backend.
         current_password: deletePassword.trim(),
-
-        // NEW: Always send DELETE in uppercase to keep the backend check consistent.
         confirm_text: deleteConfirmText.trim().toUpperCase(),
       });
 
@@ -442,10 +507,11 @@ export default function SettingsPage() {
       setDeleteConfirmText("");
       setDeletePasswordError("");
       setDeleteConfirmError("");
+      setDeleteModalError("");
 
       router.push("/");
     } catch (err: unknown) {
-      setError(getApiErrorMessage(err));
+      setDeleteModalError(getApiErrorMessage(err));
     } finally {
       setIsDeletingAccount(false);
     }
@@ -563,23 +629,38 @@ export default function SettingsPage() {
           description={tx("settings.password.desc", "Update your password securely.")}
         />
 
+        {passwordError && (
+          <div className="mx-auto mt-6 w-full max-w-3xl rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100">
+            {passwordError}
+          </div>
+        )}
+
         <div className="mx-auto mt-6 grid w-full max-w-3xl gap-4">
           <PasswordField
             label={tx("settings.password.current", "Current password")}
             value={currentPassword}
-            onChange={setCurrentPassword}
+            onChange={(value) => {
+              setCurrentPassword(value);
+              if (passwordError) setPasswordError("");
+            }}
           />
 
           <PasswordField
             label={tx("settings.password.new", "New password")}
             value={newPassword}
-            onChange={setNewPassword}
+            onChange={(value) => {
+              setNewPassword(value);
+              if (passwordError) setPasswordError("");
+            }}
           />
 
           <PasswordField
             label={tx("settings.password.confirm", "Confirm password")}
             value={confirmPassword}
-            onChange={setConfirmPassword}
+            onChange={(value) => {
+              setConfirmPassword(value);
+              if (passwordError) setPasswordError("");
+            }}
           />
 
           <PasswordRules password={newPassword} />
@@ -767,7 +848,10 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => {
-              // NEW: Open the delete modal and clear old delete validation messages.
+              // Open the delete modal and clear old delete validation messages.
+              setDeletePassword("");
+              setDeleteConfirmText("");
+              setDeleteModalError("");
               setDeletePasswordError("");
               setDeleteConfirmError("");
               setDeleteModalOpen(true);
@@ -801,6 +885,12 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
+                {deleteModalError && (
+                  <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100">
+                    {deleteModalError}
+                  </div>
+                )}
+
                 <div className="mt-6 space-y-4">
                   <PasswordField
                     label="Current password"
@@ -812,6 +902,10 @@ export default function SettingsPage() {
                       // NEW: Remove the password error as soon as the user starts typing.
                       if (value.trim()) {
                         setDeletePasswordError("");
+                      }
+
+                      if (deleteModalError) {
+                        setDeleteModalError("");
                       }
                     }}
                     error={deletePasswordError}
@@ -835,6 +929,10 @@ export default function SettingsPage() {
                         if (upperCaseValue.trim() === "DELETE") {
                           setDeleteConfirmError("");
                         }
+
+                        if (deleteModalError) {
+                          setDeleteModalError("");
+                        }
                       }}
                       placeholder="DELETE"
                       className="mt-2 w-full bg-transparent text-sm font-medium uppercase text-slate-900 outline-none placeholder:text-slate-400 dark:text-slate-50 dark:placeholder:text-slate-500"
@@ -856,7 +954,8 @@ export default function SettingsPage() {
                       setDeletePassword("");
                       setDeleteConfirmText("");
 
-                      // NEW: Clear validation errors when the user closes the modal.
+                      // Clear validation errors when the user closes the modal.
+                      setDeleteModalError("");
                       setDeletePasswordError("");
                       setDeleteConfirmError("");
                     }}
@@ -869,10 +968,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={handleDeleteAccount}
-                    disabled={
-                      isDeletingAccount ||
-                      deleteConfirmText.trim().toUpperCase() !== "DELETE"
-                    }
+                    disabled={isDeletingAccount}
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isDeletingAccount ? (

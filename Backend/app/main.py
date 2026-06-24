@@ -168,7 +168,7 @@ STATUS_FALLBACK_MESSAGES = {
 
 
 def build_error_detail(status_code: int, detail):
-    """
+    """-
     Converts every backend error into a clean structure:
     {
       "code": "...",

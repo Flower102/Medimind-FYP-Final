@@ -182,6 +182,30 @@ function getShellAvatarSrc(user: ShellUser | null) {
   return url;
 }
 
+function notifyUserUpdated(user: ShellUser) {
+  if (typeof window === "undefined") return;
+
+  const displayName = getShellUserName(user, user.email);
+
+  try {
+    window.localStorage.setItem("mm_display_name", displayName);
+    window.localStorage.setItem("mm_avatar_url", user.avatar_url ?? "");
+  } catch {
+    // localStorage can fail in restricted browser modes.
+  }
+
+  // This event keeps AppShell, the sidebar account card, the profile modal,
+  // and the Settings page using the same latest user details.
+  window.dispatchEvent(
+    new CustomEvent<ShellUser>("mm:user-updated", {
+      detail: user,
+    })
+  );
+
+  // Also refresh components that already listen to your app storage event.
+  window.dispatchEvent(new Event("mm:storage"));
+}
+
 export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { t } = useI18n();
@@ -304,6 +328,28 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     loadCurrentUser();
+  }, [loadCurrentUser]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    function handleUserUpdated(event: Event) {
+      const updatedUser = (event as CustomEvent<ShellUser>).detail;
+
+      if (!updatedUser) {
+        loadCurrentUser();
+        return;
+      }
+
+      setCurrentUser(updatedUser);
+      setDisplayNameDraft(updatedUser.display_name ?? "");
+    }
+
+    window.addEventListener("mm:user-updated", handleUserUpdated);
+
+    return () => {
+      window.removeEventListener("mm:user-updated", handleUserUpdated);
+    };
   }, [loadCurrentUser]);
 
   useEffect(() => {
@@ -517,6 +563,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       setCurrentUser(updatedUser);
       setDisplayNameDraft(updatedUser.display_name ?? "");
+      notifyUserUpdated(updatedUser);
       setPendingAvatarFile(null);
       setPendingAvatarPreview(null);
       setProfileModalOpen(false);
