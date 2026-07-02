@@ -40,13 +40,12 @@ class Settings(BaseSettings):
     # Email
     # console = prints verification code in terminal / Render logs
     # smtp = real SMTP email
-    MAIL_TRANSPORT: str = "smtp"
+    MAIL_TRANSPORT: str = "console"
     MAIL_FROM: str = "no-reply@localhost"
     MAIL_FROM_NAME: str = "MediMind Lite"
 
-    # Temporary safety switch:
-    # Set this to true on Render only while testing if you want codes in logs.
-    ALLOW_CONSOLE_EMAIL_IN_PROD: bool = False
+   
+    ALLOW_CONSOLE_EMAIL_IN_PROD: bool = True
 
     # BREVO email API
     BREVO_API_KEY: str | None = None
