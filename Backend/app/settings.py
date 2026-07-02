@@ -37,15 +37,8 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     VERIFY_CODE_EXPIRE_MINUTES: int = 10
 
-    # Email
-    # console = prints verification code in terminal / Render logs
-    # smtp = real SMTP email
-    MAIL_TRANSPORT: str = "console"
-    MAIL_FROM: str = "no-reply@localhost"
-    MAIL_FROM_NAME: str = "MediMind Lite"
-
    
-    ALLOW_CONSOLE_EMAIL_IN_PROD: bool = True
+    ALLOW_CONSOLE_EMAIL_IN_PROD: bool = False
 
     # BREVO email API
     BREVO_API_KEY: str | None = None
