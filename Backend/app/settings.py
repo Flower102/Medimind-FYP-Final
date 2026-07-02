@@ -1,4 +1,4 @@
-# /backend/app/settings.py
+# /Backend/app/settings.py
 
 from pathlib import Path as FilePath
 
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     ENV: str = "dev"
 
-    DATABASE_URL: str = "postgresql+psycopg2://postgres.njmfynsncjdgyodmshxc:Myfamily12akora@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?sslmode=require"
+    DATABASE_URL: str = "sqlite:///./medimind.db"
 
     SECRET_KEY: str = "CHANGE_ME"
     SESSION_SECRET_KEY: str = "CHANGE_ME_SESSION_SECRET"
@@ -37,20 +37,14 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     VERIFY_CODE_EXPIRE_MINUTES: int = 10
 
-    # Email
-    # console = prints verification code in terminal / Render logs
-    # smtp = real SMTP email
-    # resend = real email through Resend HTTP API
-    MAIL_TRANSPORT: str = "smtp"
+    # Email transport:
+    # brevo = sends real verification/reset emails through the Brevo API.
+    MAIL_TRANSPORT: str = "brevo"
     MAIL_FROM: str = "no-reply@localhost"
     MAIL_FROM_NAME: str = "MediMind Lite"
 
-    ALLOW_CONSOLE_EMAIL_IN_PROD: bool = False
+    BREVO_API_KEY: str | None = None
 
-    # BREVO email API
-    BREVO_API_KEY: str = ""
-
-    # SMTP email settings
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_TLS: bool = True
@@ -63,26 +57,29 @@ class Settings(BaseSettings):
 
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
-    GOOGLE_REDIRECT_URI: str = "http://localhost:3000/api/backend/auth/google/callback"
+    GOOGLE_REDIRECT_URI: str = ""
+
+    SUPABASE_URL: str | None = None
+    SUPABASE_SERVICE_ROLE_KEY: str | None = None
+    SUPABASE_AVATAR_BUCKET: str = "avatar"
 
     @model_validator(mode="after")
     def _normalise_and_validate(self):
         self.ENV = (self.ENV or "dev").lower().strip()
-        self.MAIL_TRANSPORT = (self.MAIL_TRANSPORT or "console").lower().strip()
+        self.MAIL_TRANSPORT = (self.MAIL_TRANSPORT or "brevo").lower().strip()
 
         if self.ENV == "prod":
             self.AUTH_COOKIE_SECURE = True
             self.AUTH_COOKIE_SAMESITE = "none"
 
-            if (
-                self.MAIL_TRANSPORT == "console"
-                and not self.ALLOW_CONSOLE_EMAIL_IN_PROD
-            ):
-                raise ValueError(
-                    "MAIL_TRANSPORT=console is not allowed in prod. Use MAIL_TRANSPORT=brevo."
-                    "Use MAIL_TRANSPORT=resend for real email, or set "
-                    "ALLOW_CONSOLE_EMAIL_IN_PROD=true temporarily for testing."
-                )
+        if self.MAIL_TRANSPORT != "brevo":
+            raise ValueError("MAIL_TRANSPORT must be set to brevo.")
+
+        if not self.BREVO_API_KEY:
+            raise ValueError("BREVO_API_KEY is missing. Add it in Render environment variables.")
+
+        if not self.MAIL_FROM:
+            raise ValueError("MAIL_FROM is missing. Add a verified Brevo sender email.")
 
         return self
 
