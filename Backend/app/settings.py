@@ -1,7 +1,6 @@
 # /backend/app/settings.py
 
 from pathlib import Path as FilePath
-
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -36,8 +35,6 @@ class Settings(BaseSettings):
                     "Use MAIL_TRANSPORT=smtp, or set "
                     "ALLOW_CONSOLE_EMAIL_IN_PROD=true temporarily for testing."
                 )
-
         return self
-
 
 settings = Settings()
