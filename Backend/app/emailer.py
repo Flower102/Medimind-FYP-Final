@@ -2,17 +2,6 @@
 
 # backend/app/emailer.py
 
-"""
-Email sending helper.
-
-Development:
-- MAIL_TRANSPORT=console
-- Code prints in the backend terminal
-
-Production:
-- MAIL_TRANSPORT=smtp
-- Code is sent through SMTP settings
-"""
 
 import smtplib
 from email.message import EmailMessage
@@ -34,7 +23,7 @@ def send_verification_email(to_email: str, code: str) -> None:
     - what to do if they did not request it
     """
 
-    if settings.MAIL_TRANSPORT == "console":
+    if settings.MAIL_TRANSPORT == "smtp":
         print(
             "\n=== MEDIMIND EMAIL CODE ===\n"
             f"To: {to_email}\n"
