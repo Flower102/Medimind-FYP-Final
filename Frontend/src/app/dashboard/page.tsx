@@ -1,15 +1,15 @@
 "use client";
 
-/*
-  Dashboard page
 
-  This version keeps the dashboard cleaner:
-  - Main stat cards appear first
-  - The top-right bell contains gentle reminders
-  - Learning insight and motivation are combined into one main card
-  - Motivation is the main message
-  - Learning insight is shown as a smaller section inside that same card
-*/
+/* -------------------------------------------------------------------------- */
+/* File Overview */
+/* Dashboard Page. Loads the progress summary and turns it into statistics, reminders, quick actions, insights, and motivation cards. */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Imports */
+/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
+/* -------------------------------------------------------------------------- */
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -37,6 +37,11 @@ import {
 
 import { useI18n } from "@/src/i18n/I18nProvider";
 
+/* -------------------------------------------------------------------------- */
+/* Type Definitions */
+/* Defines the data shapes used for props, API responses, form values, and page state. */
+/* -------------------------------------------------------------------------- */
+
 type ReminderItem = {
   id: string;
   title: string;
@@ -47,11 +52,18 @@ type ReminderItem = {
   icon: ReactNode;
 };
 
-/* --------------------------------
-   Main Dashboard page
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Main Page Component */
+/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
+/* -------------------------------------------------------------------------- */
 
 export default function DashboardPage() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const { t } = useI18n();
 
   const tx = useCallback(
@@ -62,6 +74,11 @@ export default function DashboardPage() {
     [t]
   );
 
+  /* -------------------------------------------------------------------------- */
+  /* State Values */
+  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
+  /* -------------------------------------------------------------------------- */
+
   const [data, setData] = useState<ProgressSummary | null>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -70,6 +87,11 @@ export default function DashboardPage() {
   const [selectedReminder, setSelectedReminder] = useState<ReminderItem | null>(
     null
   );
+
+  /* -------------------------------------------------------------------------- */
+  /* Load Dashboard Handler */
+  /* Loads the latest backend data and updates the page state used by the interface. */
+  /* -------------------------------------------------------------------------- */
 
   const loadDashboard = useCallback(async () => {
     setIsLoading(true);
@@ -91,14 +113,29 @@ export default function DashboardPage() {
     }
   }, [tx]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Side Effects */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Reminder Items Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
 
   const reminderItems = useMemo(() => {
     if (!data) return [];
     return buildDashboardReminders(data, tx);
   }, [data, tx]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Conditional UI State */
+  /* Shows a focused loading, error, empty, or success view before the main interface is displayed. */
+  /* -------------------------------------------------------------------------- */
 
   if (isLoading) {
     return (
@@ -111,6 +148,11 @@ export default function DashboardPage() {
     );
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Conditional UI State */
+  /* Shows a focused loading, error, empty, or success view before the main interface is displayed. */
+  /* -------------------------------------------------------------------------- */
+
   if (error) {
     return (
       <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100">
@@ -119,13 +161,31 @@ export default function DashboardPage() {
     );
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Conditional UI State */
+  /* Shows a focused loading, error, empty, or success view before the main interface is displayed. */
+  /* -------------------------------------------------------------------------- */
+
   if (!data) return null;
 
   const totalFavouriteItems = data.favouriteNotes + data.favouriteChats;
 
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Dashboard Page Shell */
+  /* Wraps the dashboard sections in a consistent vertical layout. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="space-y-8">
-      {/* Header */}
+      {/*
+        Dashboard Header and Notifications
+        Shows the welcome heading and the notification bell for reminders.
+      */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-50">
@@ -154,6 +214,10 @@ export default function DashboardPage() {
             )}
           </button>
 
+          {/*
+            Reminder Dropdown
+            Displays short reminder items that the user can open for more detail.
+          */}
           {notificationsOpen && (
             <div className="absolute right-0 z-30 mt-3 w-[calc(100vw-2rem)] max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900">
               <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
@@ -181,6 +245,10 @@ export default function DashboardPage() {
               </div>
 
               <div className="max-h-[65vh] overflow-y-auto p-3">
+                {/*
+                  Reminder Dropdown Empty State
+                  Explains that no reminders are currently needed when the reminder list is empty.
+                */}
                 {reminderItems.length === 0 ? (
                   <div className="rounded-xl p-4 text-sm text-slate-500 dark:text-slate-400">
                     {tx(
@@ -224,7 +292,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Main dashboard stats */}
+      {/*
+        Dashboard Summary Metrics
+        Shows four quick stat cards so the user can understand progress at a glance.
+      */}
       <div className="grid gap-6 md:grid-cols-4">
         <StatCard
           title={tx("dashboard.notesCreated", "Notes Created")}
@@ -256,7 +327,10 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Combined motivation and learning insight card */}
+      {/*
+        Motivation and Insight Summary
+        Displays the main motivational message and a smaller explanation of the learning pattern.
+      */}
       <MotivationInsightCard
         motivationTitle={tx("dashboard.motivation", "Motivation")}
         motivationText={data.motivationMessage}
@@ -264,7 +338,10 @@ export default function DashboardPage() {
         insightText={data.insight}
       />
 
-      {/* Main action cards */}
+      {/*
+        Quick Action Cards
+        Provides shortcuts for creating notes, summaries, quizzes, and browsing favourites.
+      */}
       <div className="grid gap-6 md:grid-cols-2">
         <ActionCard
           title={tx("dashboard.addNewNote", "Add New Note")}
@@ -312,7 +389,10 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Recent quizzes */}
+      {/*
+        Recent Quiz Activity
+        Shows the latest quiz results so recent learning activity is easy to review.
+      */}
       <div className="space-y-3">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
           {tx("dashboard.recentQuizActivity", "Recent Quiz Activity")}
@@ -345,7 +425,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Reminder detail popup */}
+      {/*
+        Reminder Detail Modal
+        Shows the full explanation and action link for the selected reminder.
+      */}
       {selectedReminder && (
         <ReminderDetailModal
           reminder={selectedReminder}
@@ -356,9 +439,11 @@ export default function DashboardPage() {
   );
 }
 
-/* --------------------------------
-   Dynamic reminder builder
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Build Dashboard Reminders Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function buildDashboardReminders(
   data: ProgressSummary,
@@ -513,9 +598,11 @@ function buildDashboardReminders(
   return reminders.slice(0, 4);
 }
 
-/* --------------------------------
-   Reusable UI components
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Stat Card Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function StatCard({
   title,
@@ -534,6 +621,11 @@ function StatCard({
     tint === "emerald"
       ? "bg-emerald-500/10 text-emerald-400"
       : "bg-blue-500/10 text-blue-400";
+
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
@@ -559,6 +651,11 @@ function StatCard({
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Motivation Insight Card Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function MotivationInsightCard({
   motivationTitle,
@@ -610,6 +707,11 @@ function MotivationInsightCard({
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Action Card Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function ActionCard({
   title,
   desc,
@@ -634,6 +736,11 @@ function ActionCard({
     accent === "green"
       ? "bg-emerald-500/10 text-emerald-400"
       : "bg-blue-500/10 text-blue-400";
+
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -660,6 +767,11 @@ function ActionCard({
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Recent Row Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function RecentRow({
   title,
@@ -694,6 +806,11 @@ function RecentRow({
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Reminder Detail Modal Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function ReminderDetailModal({
   reminder,
   onClose,
@@ -701,6 +818,11 @@ function ReminderDetailModal({
   reminder: ReminderItem;
   onClose: () => void;
 }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6"
@@ -748,6 +870,11 @@ function ReminderDetailModal({
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Divider Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function Divider() {
   return <div className="h-px bg-slate-200 dark:bg-slate-800" />;

@@ -1,19 +1,16 @@
-// frontend/src/app/chatbots/page.tsx
 
 "use client";
 
-/**
- * Chatbots page.
- *
- * This page:
- * - Lists saved AI learning chats
- * - Lets the user continue a chat
- * - Lets the user rename a chat
- * - Lets the user add/remove a chat from favourites
- * - Lets the user delete a chat
- *
- * Errors now show plain English messages from the shared apiFetch helper.
- */
+
+/* -------------------------------------------------------------------------- */
+/* File Overview */
+/* Chatbots List Page. Displays saved AI chats and supports continue, rename, favourite, refresh, and delete actions. */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Imports */
+/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
+/* -------------------------------------------------------------------------- */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -43,7 +40,17 @@ import {
 import { getApiErrorMessage } from "@/src/lib/apiFetch";
 import { useI18n } from "@/src/i18n/I18nProvider";
 
+/* -------------------------------------------------------------------------- */
+/* Main Page Component */
+/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
+/* -------------------------------------------------------------------------- */
+
 export default function ChatbotsPage() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const { t } = useI18n();
 
   const tx = useCallback(
@@ -53,6 +60,11 @@ export default function ChatbotsPage() {
     },
     [t]
   );
+
+  /* -------------------------------------------------------------------------- */
+  /* State Values */
+  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
+  /* -------------------------------------------------------------------------- */
 
   const [sessions, setSessions] = useState<BackendChatSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -73,9 +85,11 @@ export default function ChatbotsPage() {
     null
   );
 
-  /**
-   * Loads saved chats from the backend database.
-   */
+  /* -------------------------------------------------------------------------- */
+  /* Load Sessions Handler */
+  /* Loads the latest backend data and updates the page state used by the interface. */
+  /* -------------------------------------------------------------------------- */
+
   const loadSessions = useCallback(async () => {
     setIsLoading(true);
     setError("");
@@ -100,14 +114,20 @@ export default function ChatbotsPage() {
     }
   }, [tx]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Side Effects */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     loadSessions();
   }, [loadSessions]);
 
-  /**
-   * Recent chats appear first.
-   * If updatedAt is missing, that chat goes lower in the list.
-   */
+  /* -------------------------------------------------------------------------- */
+  /* Sorted Sessions Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
+
   const sortedSessions = useMemo(() => {
     const toTime = (value?: string) => {
       if (!value) return 0;
@@ -121,9 +141,11 @@ export default function ChatbotsPage() {
     );
   }, [sessions]);
 
-  /**
-   * Opens the rename modal.
-   */
+  /* -------------------------------------------------------------------------- */
+  /* Open Rename Modal Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
+
   function openRenameModal(session: BackendChatSession) {
     setError("");
     setOpenMenuId(null);
@@ -131,9 +153,11 @@ export default function ChatbotsPage() {
     setRenameValue(session.title);
   }
 
-  /**
-   * Confirms and saves the renamed title.
-   */
+  /* -------------------------------------------------------------------------- */
+  /* Confirm Rename Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
+
   async function confirmRename() {
     if (!renameSession) return;
 
@@ -180,18 +204,22 @@ export default function ChatbotsPage() {
     }
   }
 
-  /**
-   * Opens the delete confirmation modal.
-   */
+  /* -------------------------------------------------------------------------- */
+  /* Open Delete Modal Handler */
+  /* Handles the delete flow, including validation, backend calls, and UI cleanup. */
+  /* -------------------------------------------------------------------------- */
+
   function openDeleteModal(session: BackendChatSession) {
     setError("");
     setOpenMenuId(null);
     setDeleteSession(session);
   }
 
-  /**
-   * Permanently deletes a saved chat.
-   */
+  /* -------------------------------------------------------------------------- */
+  /* Confirm Delete Handler */
+  /* Handles the delete flow, including validation, backend calls, and UI cleanup. */
+  /* -------------------------------------------------------------------------- */
+
   async function confirmDelete() {
     if (!deleteSession) return;
 
@@ -222,10 +250,11 @@ export default function ChatbotsPage() {
     }
   }
 
-  /**
-   * Adds/removes one chat from favourites.
-   * This is saved in the backend database, not localStorage.
-   */
+  /* -------------------------------------------------------------------------- */
+  /* Handle Toggle Favourite Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
+
   async function handleToggleFavourite(session: BackendChatSession) {
     const nextFavourite = !session.isFavorite;
 
@@ -279,8 +308,17 @@ export default function ChatbotsPage() {
     }
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="space-y-8">
+      {/*
+        Chatbots Header and Create Action
+        Shows the page title and a link for starting a new direct chat.
+      */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-50">
@@ -317,6 +355,10 @@ export default function ChatbotsPage() {
         </p>
       </div>
 
+      {/*
+        Chatbots Error Banner
+        Shows backend or network problems when saved chats cannot be loaded or updated.
+      */}
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950 dark:text-red-100">
           {error}
@@ -377,6 +419,10 @@ export default function ChatbotsPage() {
           </div>
         ) : (
           <div className="mt-4 grid gap-6 md:grid-cols-3">
+            {/*
+              Saved Chat Cards
+              Renders each saved chat with continue, rename, favourite, and delete actions.
+            */}
             {sortedSessions.map((session) => (
               <ChatSessionCard
                 key={session.id}
@@ -397,6 +443,10 @@ export default function ChatbotsPage() {
         )}
       </div>
 
+      {/*
+        Rename Chat Modal
+        Lets the user update the title of an existing saved chat.
+      */}
       {renameSession && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
@@ -465,6 +515,10 @@ export default function ChatbotsPage() {
         </div>
       )}
 
+      {/*
+        Delete Chat Modal
+        Asks for confirmation before permanently deleting a saved chat.
+      */}
       {deleteSession && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
@@ -519,6 +573,11 @@ export default function ChatbotsPage() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Chat Session Card Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function ChatSessionCard({
   session,
   menuOpen,
@@ -536,7 +595,17 @@ function ChatSessionCard({
   onRename: () => void;
   onDelete: () => void;
 }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const { t } = useI18n();
+
+  /* -------------------------------------------------------------------------- */
+  /* Tx Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   const tx = useCallback(
     (key: string, fallback: string) => {
@@ -550,6 +619,11 @@ function ChatSessionCard({
     session.messages?.find((m) => m.role === "assistant")?.content ??
     session.messages?.find((m) => m.role === "user")?.content ??
     tx("chatbots.previewFallback", "AI learning conversation");
+
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
 
   return (
     <div className="relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">

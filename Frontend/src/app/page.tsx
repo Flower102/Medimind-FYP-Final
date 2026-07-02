@@ -1,11 +1,15 @@
-// src/app/page.tsx
-// Landing page with hydration-safe PublicNav loading.
-// Fixes:
-// 1. PublicNav hydration mismatch by loading it client-side only.
-// 2. "Explore features" and "View features" buttons stay white on hover.
-// 3. Feature buttons use transparent background with a soft white hover glow.
 
 "use client";
+
+/* -------------------------------------------------------------------------- */
+/* File Overview */
+/* Landing Page. Introduces MediMind Lite, explains the main benefits, and guides visitors to features, signup, and public information pages. */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Imports */
+/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
+/* -------------------------------------------------------------------------- */
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -16,13 +20,27 @@ import type { ReactNode } from "react";
 import Footer from "../components/Footer";
 import { useI18n } from "../i18n/I18nProvider";
 
+/* -------------------------------------------------------------------------- */
+/* Dynamic Component Loading */
+/* Loads a component on the client when server rendering would create hydration or browser-only issues. */
+/* -------------------------------------------------------------------------- */
+
 const PublicNav = dynamic(() => import("../components/PublicNav"), {
   ssr: false,
 });
 
-/* ----------------------------- Icon components ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Icon Chevron Down Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconChevronDown({ open }: { open: boolean }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <svg
       width="16"
@@ -42,6 +60,11 @@ function IconChevronDown({ open }: { open: boolean }) {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Feature Icon Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function FeatureIcon({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-blue-100 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
@@ -49,6 +72,11 @@ function FeatureIcon({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Bullet Icon Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function BulletIcon({ children }: { children: ReactNode }) {
   return (
@@ -58,7 +86,17 @@ function BulletIcon({ children }: { children: ReactNode }) {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Icon Brain Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function IconBrain() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
@@ -83,6 +121,11 @@ function IconBrain() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Icon Book Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function IconBook() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -102,7 +145,17 @@ function IconBook() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Icon Sparkle Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function IconSparkle() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
@@ -119,6 +172,11 @@ function IconSparkle() {
     </svg>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Icon Users Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconUsers() {
   return (
@@ -146,7 +204,17 @@ function IconUsers() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Icon Heart Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function IconHeart() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
@@ -158,6 +226,11 @@ function IconHeart() {
     </svg>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Icon Shield Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconShield() {
   return (
@@ -172,7 +245,11 @@ function IconShield() {
   );
 }
 
-/* ----------------------------- FAQ content ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Static Page Data */
+/* Stores reusable labels, routes, lists, or settings that stay the same while the component renders. */
+/* -------------------------------------------------------------------------- */
 
 const FAQ_ITEMS = [
   {
@@ -211,7 +288,6 @@ const FAQ_ITEMS = [
   },
 ];
 
-/* ----------------------------- Shared styles ----------------------------- */
 
 const pageShell =
   "min-h-screen bg-white text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-50";
@@ -227,10 +303,24 @@ const featuresGhostButton =
 const cardBase =
   "rounded-2xl border border-slate-200 bg-white shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-900";
 
-/* ----------------------------- Main page component ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Main Page Component */
+/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
+/* -------------------------------------------------------------------------- */
 
 export default function LandingPage() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const { t } = useI18n();
+  /* -------------------------------------------------------------------------- */
+  /* State Values */
+  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
+  /* -------------------------------------------------------------------------- */
+
   const [faqOpen, setFaqOpen] = useState<number | null>(0);
 
   const heroImg =
@@ -239,6 +329,11 @@ export default function LandingPage() {
   const everyoneImg =
     "https://images.unsplash.com/photo-1702648159122-1cf410e0a3c7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1200";
 
+  /* -------------------------------------------------------------------------- */
+  /* Tt Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
+
   const tt = useCallback(
     (key: string, fallback: string) => {
       const value = t(key);
@@ -246,6 +341,11 @@ export default function LandingPage() {
     },
     [t]
   );
+
+  /* -------------------------------------------------------------------------- */
+  /* Feature Cards Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
 
   const featureCards = useMemo(
     () => [
@@ -277,11 +377,23 @@ export default function LandingPage() {
     [tt]
   );
 
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <main className={pageShell}>
+      {/*
+        Public Navigation
+        Loads the shared public navigation at the top of the landing page.
+      */}
       <PublicNav />
 
-      {/* Hero section */}
+      {/*
+        Hero and Feature Cards Section
+        Introduces the product and shows the main learning support cards.
+      */}
       <section className="mx-auto max-w-6xl px-6 pb-14 pt-12">
         <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
           <div>
@@ -324,7 +436,10 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Feature cards */}
+        {/*
+          Homepage Feature Cards
+          Shows the three core ways MediMind supports learning.
+        */}
         <div className="mt-14">
           <h2
             className={`text-center text-2xl font-semibold tracking-tight sm:text-3xl ${headingText}`}
@@ -350,7 +465,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Designed for everyone */}
+      {/*
+        Supporting Explanation Section
+        Explains why the app is useful and supports the message with a second image.
+      */}
       <section className="bg-slate-50 transition-colors dark:bg-slate-900">
         <div className="mx-auto max-w-6xl px-6 py-14">
           <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
@@ -421,7 +539,6 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Safety card */}
           <div className="mt-12 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-950">
             <div className="flex gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-blue-100 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
@@ -452,7 +569,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FAQ */}
+      {/*
+        Expandable FAQ Section
+        Lets visitors open short answers about the project and its purpose.
+      */}
       <section className="mx-auto max-w-6xl px-6 py-14">
         <h2
           className={`text-2xl font-semibold tracking-tight sm:text-3xl ${headingText}`}
@@ -499,7 +619,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Final CTA */}
       <section className="bg-slate-50 transition-colors dark:bg-slate-900">
         <div className="mx-auto max-w-6xl px-6 py-16 text-center">
           <h2
@@ -528,8 +647,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
       <div className="mx-auto max-w-6xl px-6 pb-12 pt-10">
+        {/*
+          Landing Footer
+          Shows shared footer links and contact information for public visitors.
+        */}
         <Footer />
       </div>
     </main>

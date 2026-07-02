@@ -1,22 +1,16 @@
-// frontend/src/app/chatbot_InteractionPage/page.tsx
 
 "use client";
 
-/**
- * AI Chat Interaction page.
- *
- * This page:
- * - Loads an existing saved chat when chatId is in the URL
- * - Starts a new AI summary when coming from Learning Workspace
- * - Saves user and assistant messages to the backend
- * - Allows file attachments
- * - Allows PDF export
- * - Allows chat deletion
- *
- * Important favourite fix:
- * - If the chat came from Learning Workspace, it is saved with source = "learning_workspace"
- * - If the chat was created directly from the Chatbots page, it is saved with source = "direct_chat"
- */
+
+/* -------------------------------------------------------------------------- */
+/* File Overview */
+/* AI Chat Interaction Page. Runs the live AI chat experience, loads or creates saved chats, handles file uploads, exports, and chat deletion. */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Imports */
+/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
+/* -------------------------------------------------------------------------- */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -47,14 +41,28 @@ import {
 } from "@/src/lib/chatSessionsApi";
 
 
+/* -------------------------------------------------------------------------- */
+/* Type Definitions */
+/* Defines the data shapes used for props, API responses, form values, and page state. */
+/* -------------------------------------------------------------------------- */
 
 type Msg = ChatMsg & {
   suggestions?: string[];
 };
 
+/* -------------------------------------------------------------------------- */
+/* Type Definitions */
+/* Defines the data shapes used for props, API responses, form values, and page state. */
+/* -------------------------------------------------------------------------- */
+
 type PageBanner =
   | { open: false }
   | { open: true; type: "success" | "error" | "info"; message: string };
+
+/* -------------------------------------------------------------------------- */
+/* Type Definitions */
+/* Defines the data shapes used for props, API responses, form values, and page state. */
+/* -------------------------------------------------------------------------- */
 
 type LearningContext = {
   noteId?: string;
@@ -65,6 +73,11 @@ type LearningContext = {
   createdAt?: string;
 };
 
+/* -------------------------------------------------------------------------- */
+/* Type Definitions */
+/* Defines the data shapes used for props, API responses, form values, and page state. */
+/* -------------------------------------------------------------------------- */
+
 type FormattedBlock =
   | { type: "section"; text: string }
   | { type: "subheading"; text: string }
@@ -72,14 +85,19 @@ type FormattedBlock =
   | { type: "list"; items: string[] };
 
 
-
-/* --------------------------------
-   Small helpers
--------------------------------- */
+/* -------------------------------------------------------------------------- */
+/* Cn Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function cn(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
 }
+
+/* -------------------------------------------------------------------------- */
+/* Get Raw Error Message Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
 
 function getRawErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -92,9 +110,11 @@ function getRawErrorMessage(error: unknown): string {
   }
 }
 
-/**
- * Converts backend error codes into clear user messages.
- */
+/* -------------------------------------------------------------------------- */
+/* Get Friendly Error Message Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
+
 function getFriendlyErrorMessage(error: unknown, fallback: string): string {
   const raw = getRawErrorMessage(error).trim();
 
@@ -151,13 +171,28 @@ function getFriendlyErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Clean List Text Helper */
+/* Keeps validation, detection, or text-cleaning logic separate from the main render code. */
+/* -------------------------------------------------------------------------- */
+
 function cleanListText(line: string) {
   return line.replace(/^[-•*]\s*/, "").trim();
 }
 
+/* -------------------------------------------------------------------------- */
+/* Strip Number Prefix Helper */
+/* Keeps validation, detection, or text-cleaning logic separate from the main render code. */
+/* -------------------------------------------------------------------------- */
+
 function stripNumberPrefix(line: string) {
   return line.replace(/^\d+[\).]\s*/, "").trim();
 }
+
+/* -------------------------------------------------------------------------- */
+/* Normalise Heading Helper */
+/* Converts backend or mixed-format data into the frontend shape used by the rest of the app. */
+/* -------------------------------------------------------------------------- */
 
 function normaliseHeading(line: string) {
   return stripNumberPrefix(cleanListText(line))
@@ -165,6 +200,11 @@ function normaliseHeading(line: string) {
     .trim()
     .toLowerCase();
 }
+
+/* -------------------------------------------------------------------------- */
+/* Is Main Section Heading Helper */
+/* Keeps validation, detection, or text-cleaning logic separate from the main render code. */
+/* -------------------------------------------------------------------------- */
 
 function isMainSectionHeading(line: string) {
   const text = normaliseHeading(line);
@@ -185,10 +225,20 @@ function isMainSectionHeading(line: string) {
   ].includes(text);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Is Sub Heading Helper */
+/* Keeps validation, detection, or text-cleaning logic separate from the main render code. */
+/* -------------------------------------------------------------------------- */
+
 function isSubHeading(line: string) {
   const cleaned = cleanListText(line);
   return cleaned.endsWith(":") && cleaned.length <= 48;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Looks Like List Item Helper */
+/* Keeps validation, detection, or text-cleaning logic separate from the main render code. */
+/* -------------------------------------------------------------------------- */
 
 function looksLikeListItem(line: string) {
   const trimmed = line.trim();
@@ -201,6 +251,11 @@ function looksLikeListItem(line: string) {
 
   return cleaned.length <= 120;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Split Inline Heading Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function splitInlineHeading(line: string) {
   const match = line.match(/^([A-Za-z][A-Za-z\s]{2,40}):\s+(.+)$/);
@@ -224,15 +279,22 @@ function splitInlineHeading(line: string) {
   return { heading, text };
 }
 
+/* -------------------------------------------------------------------------- */
+/* Format File Size Helper */
+/* Formats values into readable text before they are shown in the interface. */
+/* -------------------------------------------------------------------------- */
+
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/**
- * Creates a readable saved chat title from the first user message.
- */
+/* -------------------------------------------------------------------------- */
+/* Create Chat Title Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function createChatTitle(messages: Msg[]) {
   const firstUserMessage = messages.find((message) => message.role === "user")
     ?.content;
@@ -247,9 +309,11 @@ function createChatTitle(messages: Msg[]) {
   return cleaned.length > 45 ? `${cleaned.slice(0, 45)}...` : cleaned;
 }
 
-/**
- * Removes frontend-only properties before saving to backend.
- */
+/* -------------------------------------------------------------------------- */
+/* To Backend Message Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function toBackendMessage(message: Msg): ChatMsg {
   return {
     role: message.role,
@@ -257,9 +321,11 @@ function toBackendMessage(message: Msg): ChatMsg {
   };
 }
 
-/* --------------------------------
-   Reusable UI components
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Status Banner Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function StatusBanner({
   type,
@@ -275,6 +341,11 @@ function StatusBanner({
         ? "border-red-200 bg-red-50 text-red-900 dark:border-red-900/50 dark:bg-red-950 dark:text-red-100"
         : "border-slate-200 bg-slate-50 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100";
 
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className={cn("rounded-xl border px-4 py-3 text-sm leading-6", styles)}>
       {message}
@@ -282,9 +353,11 @@ function StatusBanner({
   );
 }
 
-/**
- * Turns plain AI text into readable sections/lists.
- */
+/* -------------------------------------------------------------------------- */
+/* Build Formatted Blocks Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function buildFormattedBlocks(content: string): FormattedBlock[] {
   const lines = content
     .split("\n")
@@ -373,8 +446,18 @@ function buildFormattedBlocks(content: string): FormattedBlock[] {
   return blocks;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Assistant Plain Formatted Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function AssistantPlainFormatted({ content }: { content: string }) {
   const blocks = buildFormattedBlocks(content);
+
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
 
   return (
     <div className="text-[17px] leading-8 text-slate-800 dark:text-slate-100">
@@ -426,6 +509,11 @@ function AssistantPlainFormatted({ content }: { content: string }) {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Suggestion Buttons Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function SuggestionButtons({
   suggestions,
   onPick,
@@ -468,6 +556,11 @@ function SuggestionButtons({
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Assistant Message Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function AssistantMessage({
   content,
   suggestions,
@@ -477,6 +570,11 @@ function AssistantMessage({
   suggestions?: string[];
   onSuggestionClick: (suggestion: string) => void;
 }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="w-full max-w-6xl">
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -510,6 +608,11 @@ function AssistantMessage({
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* User Message Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function UserMessage({ content }: { content: string }) {
   return (
     <div className="max-w-5xl whitespace-pre-wrap rounded-[30px] bg-blue-600 px-6 py-5 text-[17px] leading-8 text-white shadow-sm">
@@ -518,23 +621,16 @@ function UserMessage({ content }: { content: string }) {
   );
 }
 
-/* --------------------------------
-   Main page
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Main Page Component */
+/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
+/* -------------------------------------------------------------------------- */
 
 export default function ChatPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  /**
-   * URL values.
-   *
-   * Existing saved chat:
-   * /chatbot_InteractionPage?chatId=5
-   *
-   * New chat from Learning Workspace:
-   * /chatbot_InteractionPage?session=new&noteId=5
-   */
   const sessionIdFromUrl = searchParams.get("chatId");
   const isNewSession = searchParams.get("session") === "new";
   const noteIdFromUrl = searchParams.get("noteId");
@@ -558,9 +654,6 @@ export default function ChatPage() {
 
   const endRef = useRef<HTMLDivElement>(null);
 
-  /**
-   * Learning Workspace passes note/reflection/confidence through sessionStorage.
-   */
   const learningCtx = useMemo(() => {
     if (typeof window === "undefined") return null;
 
@@ -572,12 +665,6 @@ export default function ChatPage() {
     }
   }, []);
 
-  /**
-   * This is the important favourite grouping logic.
-   *
-   * If a note ID exists either in the URL or in sessionStorage,
-   * this chat was started from Learning Workspace.
-   */
   const learningNoteId = noteIdFromUrl ?? learningCtx?.noteId ?? null;
 
   const chatSource =
@@ -600,9 +687,6 @@ export default function ChatPage() {
     []
   );
 
-  /**
-   * Updates the current chat ID and URL after a new backend session is created.
-   */
   const setCurrentChatId = useCallback((id: string) => {
     chatIdRef.current = id;
     setChatId(id);
@@ -615,9 +699,6 @@ export default function ChatPage() {
   }, []);
 
  
-  /**
- * Loads an existing saved chat when the URL has ?chatId=...
- */
   useEffect(() => {
     const savedChatId = sessionIdFromUrl;
 
@@ -660,22 +741,14 @@ export default function ChatPage() {
     };
   }, [sessionIdFromUrl, showBanner]);
 
-  /**
-   * Creates a backend chat session for a new conversation.
-   *
-   * The payload is stored in a variable first to avoid TypeScript's
-   * excess-property error when sending source/noteId.
-   */
   const createBackendSession = useCallback(
     async (initialMessages: Msg[]) => {
       const saved = await createBackendChatSession({
         title: createChatTitle(initialMessages),
         messages: initialMessages.map(toBackendMessage),
 
-        // This decides where favourites should show the chat.
         source: chatSource,
 
-        // This links Learning Workspace chats back to their note.
         noteId: learningNoteId,
       });
 
@@ -687,9 +760,6 @@ export default function ChatPage() {
     [chatSource, learningNoteId, setCurrentChatId]
   );
 
-  /**
-   * Saves one message to an existing backend chat.
-   */
   const saveMessageToBackend = useCallback(
     async (sessionId: string, message: Msg) => {
       await addBackendChatSessionMessage(sessionId, toBackendMessage(message));
@@ -702,9 +772,6 @@ export default function ChatPage() {
     fileInputRef.current?.click();
   }, []);
 
-  /**
-   * Handles uploaded files.
-   */
   const handleFilesSelected = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(event.target.files ?? []);
@@ -763,9 +830,6 @@ export default function ChatPage() {
     );
   }, []);
 
-  /**
-   * Sends a user message to the AI and saves both user + assistant messages.
-   */
   const send = useCallback(
     async (text?: string, auto = false) => {
       const messageText = (text ?? input).trim();
@@ -878,9 +942,6 @@ export default function ChatPage() {
     [send]
   );
 
-  /**
-   * Auto-starts an AI summary when coming from Learning Workspace.
-   */
   useEffect(() => {
     if (!isNewSession) return;
     if (!learningCtx) return;
@@ -908,9 +969,6 @@ Please give me a clear, simple summary.
     send(introMsg, true);
   }, [isNewSession, learningCtx, messages.length, isLoading, send]);
 
-  /**
-   * Exports the current conversation as a PDF.
-   */
   const handleExportPDF = useCallback(() => {
     if (messages.length === 0) {
       showBanner(
@@ -1055,8 +1113,17 @@ Please give me a clear, simple summary.
     }
   }, [chatId, router, showBanner]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Chat Page Shell */
+  /* Wraps the chatbot interface so the conversation fills the page correctly. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+      {/*
+        Chat Feedback Banner
+        Shows save, error, or delete feedback that applies to the current chat.
+      */}
       {banner.open && (
         <div className="px-4 pt-4 sm:px-6">
           <div className="mx-auto w-full max-w-350">
@@ -1065,6 +1132,10 @@ Please give me a clear, simple summary.
         </div>
       )}
 
+      {/*
+        Chat Header Bar
+        Shows chat title, learning context, and top-level chat actions.
+      */}
       <div className="border-b border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-6">
         <div className="mx-auto flex w-full max-w-350 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
@@ -1122,8 +1193,16 @@ Please give me a clear, simple summary.
         </div>
       </div>
 
+      {/*
+        Scrollable Conversation Area
+        Keeps the message history scrollable while the composer stays available.
+      */}
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6">
         <div className="mx-auto flex w-full max-w-350 flex-col gap-6">
+          {/*
+            Empty Chat Prompt
+            Shows starting guidance before the first message is sent.
+          */}
           {messages.length === 0 && (
             <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center dark:border-slate-700 dark:bg-slate-900">
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-300">
@@ -1141,6 +1220,10 @@ Please give me a clear, simple summary.
             </div>
           )}
 
+          {/*
+            Conversation Message List
+            Renders each user or assistant message with the correct visual style.
+          */}
           {messages.map((message, index) => (
             <div
               key={`${message.role}-${index}`}
@@ -1199,6 +1282,10 @@ Please give me a clear, simple summary.
         </div>
       </div>
 
+      {/*
+        Composer and Attachment Area
+        Holds selected file previews, attachment controls, text input, and send button.
+      */}
       <div className="border-t border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950 sm:px-6">
         <div className="mx-auto w-full max-w-350">
           <input
@@ -1264,6 +1351,10 @@ Please give me a clear, simple summary.
             </button>
           </div>
 
+          {/*
+            Selected File Preview
+            Shows files attached to the next message and lets the user remove them before sending.
+          */}
           {selectedFiles.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {selectedFiles.map((file, index) => (

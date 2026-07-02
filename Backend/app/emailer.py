@@ -14,12 +14,24 @@ Production:
 - Code is sent through SMTP settings
 """
 
+# ---------------------------------------------------------------------
+# Imports and Email Settings
+# ---------------------------------------------------------------------
+# This section imports Python's email tools and the backend settings object.
+# The settings decide whether codes are printed locally or sent through SMTP.
+# ---------------------------------------------------------------------
 import smtplib
 from email.message import EmailMessage
 
 from .settings import settings
 
 
+# ---------------------------------------------------------------------
+# Verification Email Sender
+# ---------------------------------------------------------------------
+# This function sends the six-digit code used for verification and password reset.
+# It supports console output for development and SMTP delivery for production.
+# ---------------------------------------------------------------------
 def send_verification_email(to_email: str, code: str) -> None:
     """
     Sends a verification/reset code.

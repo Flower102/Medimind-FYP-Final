@@ -1,18 +1,16 @@
-// frontend/src/app/learning_workspace/page.tsx
 
 "use client";
 
-/**
- * Learning Workspace page.
- *
- * This page lets the user:
- * - Create and edit learning notes
- * - Save reflections and confidence ratings
- * - Favourite notes
- * - Export notes as PDF
- * - Start an AI summary
- * - Generate a quiz from a saved note
- */
+
+/* -------------------------------------------------------------------------- */
+/* File Overview */
+/* Learning Workspace Page. Supports note creation, editing, reflections, confidence ratings, favourites, PDF export, AI summaries, and quiz generation. */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Imports */
+/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
+/* -------------------------------------------------------------------------- */
 
 import React, { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -31,12 +29,19 @@ import {
 import { generateQuiz, type RevealMode } from "@/src/lib/quizApi";
 import { useI18n } from "@/src/i18n/I18nProvider";
 
-/* --------------------------------
-   Local quiz option types
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Type Definitions */
+/* Defines the data shapes used for props, API responses, form values, and page state. */
+/* -------------------------------------------------------------------------- */
 
 type QuizQuestionCount = 10 | 15 | 20;
 type QuizRevealMode = RevealMode;
+
+/* -------------------------------------------------------------------------- */
+/* Type Definitions */
+/* Defines the data shapes used for props, API responses, form values, and page state. */
+/* -------------------------------------------------------------------------- */
 
 type BannerState = {
   open: boolean;
@@ -44,13 +49,12 @@ type BannerState = {
   message: string;
 };
 
-/* --------------------------------
-   Plain-English error helpers
--------------------------------- */
 
-/**
- * Pulls a code/message out of different possible thrown error shapes.
- */
+/* -------------------------------------------------------------------------- */
+/* Get Raw Error Message Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
+
 function getRawErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -62,10 +66,11 @@ function getRawErrorMessage(error: unknown): string {
   }
 }
 
-/**
- * Converts backend-style error codes into user-friendly messages.
- * This means users do not see confusing codes like AUTH_MISSING_TOKEN.
- */
+/* -------------------------------------------------------------------------- */
+/* Get Friendly Error Message Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
+
 function getFriendlyErrorMessage(error: unknown, fallback: string): string {
   const raw = getRawErrorMessage(error);
 
@@ -108,7 +113,6 @@ function getFriendlyErrorMessage(error: unknown, fallback: string): string {
       break;
   }
 
-  // If the message already looks readable, use it.
   if (
     code.includes(" ") &&
     !code.startsWith("REQUEST_FAILED_") &&
@@ -120,9 +124,11 @@ function getFriendlyErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-/* --------------------------------
-   Reusable UI components
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Card Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function Card({
   children,
@@ -131,6 +137,11 @@ function Card({
   children: React.ReactNode;
   className?: string;
 }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div
       className={[
@@ -144,6 +155,11 @@ function Card({
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Status Banner Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function StatusBanner({
   type,
@@ -198,7 +214,17 @@ function StatusBanner({
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Main Page Component */
+/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
+/* -------------------------------------------------------------------------- */
+
 export default function LearningWorkspacePage() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t } = useI18n();
@@ -211,9 +237,11 @@ export default function LearningWorkspacePage() {
     [t]
   );
 
-  /* --------------------------------
-     Notes state
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* State Values */
+  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
+  /* -------------------------------------------------------------------------- */
 
   const [noteList, setNoteList] = useState<Note[]>([]);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
@@ -230,9 +258,6 @@ export default function LearningWorkspacePage() {
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
-  /* --------------------------------
-     Quiz setup state
-  -------------------------------- */
 
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [selectedQuizNoteId, setSelectedQuizNoteId] = useState<string | null>(
@@ -249,9 +274,6 @@ export default function LearningWorkspacePage() {
   const [quizTimeLimitMinutes, setQuizTimeLimitMinutes] = useState(10);
   const [isStartingQuiz, setIsStartingQuiz] = useState(false);
 
-  /* --------------------------------
-     Status banners
-  -------------------------------- */
 
   const [pageStatus, setPageStatus] = useState<BannerState>({
     open: false,
@@ -265,6 +287,11 @@ export default function LearningWorkspacePage() {
     message: "",
   });
 
+  /* -------------------------------------------------------------------------- */
+  /* Show Page Status Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
+
   const showPageStatus = useCallback(
     (type: BannerState["type"], message: string) => {
       setPageStatus({ open: true, type, message });
@@ -275,6 +302,11 @@ export default function LearningWorkspacePage() {
     },
     []
   );
+
+  /* -------------------------------------------------------------------------- */
+  /* Show Note Status Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   const showNoteStatus = useCallback(
     (type: BannerState["type"], message: string) => {
@@ -287,9 +319,11 @@ export default function LearningWorkspacePage() {
     []
   );
 
-  /* --------------------------------
-     Load notes from backend
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Refresh Notes Handler */
+  /* Loads the latest backend data and updates the page state used by the interface. */
+  /* -------------------------------------------------------------------------- */
 
   const refreshNotes = useCallback(async () => {
     setIsLoadingNotes(true);
@@ -313,13 +347,20 @@ export default function LearningWorkspacePage() {
     }
   }, [showNoteStatus]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Side Effects */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     refreshNotes();
   }, [refreshNotes]);
 
-  /* --------------------------------
-     Start a new note
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle New Note Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   const handleNewNote = useCallback(() => {
     setSelectedNoteId(null);
@@ -335,9 +376,11 @@ export default function LearningWorkspacePage() {
     );
   }, [showNoteStatus, tx]);
 
-  /* --------------------------------
-     Select an existing saved note
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Select Note Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   const handleSelectNote = useCallback(
     async (noteId: string) => {
@@ -370,9 +413,11 @@ export default function LearningWorkspacePage() {
     [showNoteStatus, tx]
   );
 
-  /* --------------------------------
-     Save note helper
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Save Note Internal Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
 
   const saveNoteInternal = useCallback(async (): Promise<string | null> => {
     if (!noteContent.trim()) {
@@ -438,9 +483,11 @@ export default function LearningWorkspacePage() {
     tx,
   ]);
 
-  /* --------------------------------
-     Save button
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Save Note Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
 
   const handleSaveNote = useCallback(async () => {
     setIsSavingNote(true);
@@ -460,11 +507,13 @@ export default function LearningWorkspacePage() {
     setIsSavingNote(false);
   }, [saveNoteInternal, selectedNoteId, showNoteStatus, tx]);
 
-  /* --------------------------------
-     Delete note
-  -------------------------------- */
 
   const [deleteArmed, setDeleteArmed] = useState(false);
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Delete Note Handler */
+  /* Handles the delete flow, including validation, backend calls, and UI cleanup. */
+  /* -------------------------------------------------------------------------- */
 
   const handleDeleteNote = useCallback(async () => {
     if (!selectedNoteId) {
@@ -524,9 +573,11 @@ export default function LearningWorkspacePage() {
     tx,
   ]);
 
-  /* --------------------------------
-     Favourite note
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Toggle Favourite Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
 
   const handleToggleFavourite = useCallback(async () => {
     if (!selectedNoteId) {
@@ -576,9 +627,11 @@ export default function LearningWorkspacePage() {
     }
   }, [isFavorite, selectedNoteId, showPageStatus, tx]);
 
-  /* --------------------------------
-     Export PDF
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Export Pdf Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   const handleExportPDF = useCallback(() => {
     if (!noteContent.trim()) {
@@ -694,15 +747,17 @@ export default function LearningWorkspacePage() {
     );
   }, [confidence, noteContent, noteTitle, reflection, showPageStatus, tx]);
 
-  /* --------------------------------
-     Continue to AI summary
-  -------------------------------- */
 
   const canGenerateAI =
     noteContent.trim().length > 0 &&
     reflection.trim().length > 0 &&
     Number.isFinite(confidence) &&
     confidence >= 1;
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Generate Ai Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   const handleGenerateAI = useCallback(async () => {
     if (!canGenerateAI) {
@@ -766,9 +821,11 @@ export default function LearningWorkspacePage() {
     tx,
   ]);
 
-  /* --------------------------------
-     Quiz setup
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Open Quiz Modal Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   const handleOpenQuizModal = useCallback(() => {
     const firstNote = noteList[0];
@@ -789,9 +846,11 @@ export default function LearningWorkspacePage() {
     setShowQuizModal(true);
   }, [noteList, selectedNoteId, showPageStatus, tx]);
 
-  /* --------------------------------
-     Open quiz modal from URL
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
     if (!hasLoadedNotes) return;
@@ -800,6 +859,11 @@ export default function LearningWorkspacePage() {
     handleOpenQuizModal();
     router.replace("/learning_workspace");
   }, [handleOpenQuizModal, hasLoadedNotes, router, searchParams]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Start Quiz Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   const handleStartQuiz = useCallback(async () => {
     if (!selectedQuizNoteId) {
@@ -866,9 +930,17 @@ export default function LearningWorkspacePage() {
 
   const charCount = noteContent.length;
 
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="space-y-6">
-      {/* Page header */}
+      {/*
+        Page Header and Top Actions
+        Shows the workspace title, subtitle, favourite action, PDF export action, and page-level messages.
+      */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -914,6 +986,10 @@ export default function LearningWorkspacePage() {
           </div>
         </div>
 
+        {/*
+          Page Feedback Banner
+          Displays success, error, or information messages that apply to the whole Learning Workspace page.
+        */}
         {pageStatus.open && (
           <StatusBanner
             type={pageStatus.type}
@@ -925,8 +1001,15 @@ export default function LearningWorkspacePage() {
         )}
       </div>
 
-      {/* Notes card */}
+      {/*
+        Notes Workspace Card
+        Groups the saved-notes sidebar, note editor, and note management buttons in one working area.
+      */}
       <Card>
+        {/*
+          Notes Card Header
+          Shows the notes section title, character count, and whether the user is editing an existing note.
+        */}
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
@@ -941,6 +1024,10 @@ export default function LearningWorkspacePage() {
             </p>
           </div>
 
+          {/*
+            Note Action Buttons
+            Contains refresh, new note, save, and delete controls for the currently selected note.
+          */}
           <div className="flex flex-wrap justify-end gap-2">
             <button
               type="button"
@@ -989,13 +1076,24 @@ export default function LearningWorkspacePage() {
           </div>
         </div>
 
+        {/*
+          Notes Sidebar and Editor Layout
+          Splits the card into the saved-notes list on the left and the editable note fields on the right.
+        */}
         <div className="mt-4 grid gap-4 md:grid-cols-3">
-          {/* Saved notes list */}
+          {/*
+            Saved Notes List
+            Lists saved notes so the user can reopen and edit previous learning content.
+          */}
           <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800 md:col-span-1">
             <div className="mb-2 text-sm font-semibold">
               {tx("learning.savedNotes", "Saved Notes")}
             </div>
 
+            {/*
+              Saved Notes Empty State
+              Explains what to do when no notes have been saved yet.
+            */}
             {noteList.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
                 <div className="font-semibold text-slate-900 dark:text-slate-50">
@@ -1011,6 +1109,10 @@ export default function LearningWorkspacePage() {
               </div>
             ) : (
               <div className="space-y-2">
+                {/*
+                  Saved Note Buttons
+                  Creates one selectable button for each saved note in the sidebar list.
+                */}
                 {noteList.map((note) => (
                   <button
                     key={note.id}
@@ -1039,7 +1141,10 @@ export default function LearningWorkspacePage() {
             )}
           </div>
 
-          {/* Note editor */}
+          {/*
+            Note Editor Fields
+            Contains the title input, main note textarea, and note-specific feedback message.
+          */}
           <div className="md:col-span-2">
             <input
               value={noteTitle}
@@ -1061,6 +1166,10 @@ export default function LearningWorkspacePage() {
               className="mt-3 min-h-50 w-full resize-none rounded-xl border border-slate-200 bg-white p-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-2 focus:ring-slate-900/20 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 dark:placeholder:text-slate-500 dark:focus:ring-slate-200/20"
             />
 
+            {/*
+              Note Feedback Banner
+              Shows save, update, or delete feedback that only relates to the current note.
+            */}
             {noteStatus.open && (
               <div className="mt-3">
                 <StatusBanner
@@ -1076,7 +1185,10 @@ export default function LearningWorkspacePage() {
         </div>
       </Card>
 
-      {/* Reflection */}
+      {/*
+        Personal Reflection Card
+        Lets the user record what they learned and how they might apply the note.
+      */}
       <Card>
         <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
           {tx("learning.reflectionTitle", "Personal Reflection")}
@@ -1100,7 +1212,10 @@ export default function LearningWorkspacePage() {
         />
       </Card>
 
-      {/* Confidence */}
+      {/*
+        Confidence Rating Card
+        Lets the user rate confidence from 1 to 10 so progress tracking has useful learning data.
+      */}
       <Card>
         <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
           {tx("learning.confidenceTitle", "Confidence Level")}
@@ -1138,7 +1253,10 @@ export default function LearningWorkspacePage() {
         />
       </Card>
 
-      {/* AI summary */}
+      {/*
+        AI Summary Action Card
+        Explains the AI summary step and opens the chatbot flow when the required learning fields are ready.
+      */}
       <Card className="bg-slate-50 dark:bg-slate-950">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -1168,6 +1286,10 @@ export default function LearningWorkspacePage() {
           </button>
         </div>
 
+        {/*
+          AI Summary Requirements Message
+          Reminds the user which fields must be completed before starting the AI summary.
+        */}
         {!canGenerateAI && (
           <div className="mt-4 text-sm text-slate-600 dark:text-slate-300">
             {tx("learning.required", "Required")}:{" "}
@@ -1185,7 +1307,10 @@ export default function LearningWorkspacePage() {
         )}
       </Card>
 
-      {/* Quiz */}
+      {/*
+        Quiz Setup Entry Card
+        Introduces quiz generation and opens the setup modal for saved notes.
+      */}
       <Card>
         <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
           {tx("learning.takeQuizTitle", "Take a Quiz")}
@@ -1207,6 +1332,10 @@ export default function LearningWorkspacePage() {
           {tx("learning.chooseNoteStartQuiz", "Choose Note & Start Quiz")}
         </button>
 
+        {/*
+          Quiz Setup Modal
+          Collects the note selection and quiz options before generating the quiz attempt.
+        */}
         {showQuizModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
             <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-800 dark:bg-slate-900">
@@ -1234,7 +1363,10 @@ export default function LearningWorkspacePage() {
                 </button>
               </div>
 
-              {/* Choose note */}
+              {/*
+                Quiz Note Selector
+                Lets the user choose which saved note should be used to generate the quiz.
+              */}
               <div className="mt-6">
                 <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
                   {tx("learning.chooseNote", "Choose note")}
@@ -1287,12 +1419,15 @@ export default function LearningWorkspacePage() {
                 </div>
               </div>
 
-              {/* Question count */}
               <div className="mt-6">
                 <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
                   {tx("learning.numberOfQuestions", "Number of questions")}
                 </div>
 
+                {/*
+                  Question Count Options
+                  Shows the allowed quiz sizes so the backend receives a controlled question count.
+                */}
                 <div className="grid grid-cols-3 gap-2">
                   {([10, 15, 20] as QuizQuestionCount[]).map((count) => (
                     <button
@@ -1313,12 +1448,15 @@ export default function LearningWorkspacePage() {
                 </div>
               </div>
 
-              {/* Reveal mode */}
               <div className="mt-6">
                 <div className="mb-2 text-sm font-semibold text-slate-900 dark:text-slate-50">
                   {tx("learning.showAnswers", "Show answers")}
                 </div>
 
+                {/*
+                  Answer Reveal Options
+                  Lets the user choose whether answers appear during practice or only after submission.
+                */}
                 <div className="grid gap-2 sm:grid-cols-2">
                   <button
                     type="button"
@@ -1366,7 +1504,10 @@ export default function LearningWorkspacePage() {
                 </div>
               </div>
 
-              {/* Timer */}
+              {/*
+                Timer Options
+                Lets the user enable an optional timer and choose a time limit for the quiz.
+              */}
               <div className="mt-6 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
                 <label className="flex cursor-pointer items-center justify-between gap-4">
                   <div>
@@ -1417,6 +1558,10 @@ export default function LearningWorkspacePage() {
                 )}
               </div>
 
+              {/*
+                Quiz Modal Actions
+                Provides cancel and start buttons for closing the modal or creating the quiz.
+              */}
               <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <button
                   type="button"

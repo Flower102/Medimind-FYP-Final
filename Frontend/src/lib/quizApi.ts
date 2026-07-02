@@ -1,18 +1,18 @@
 // frontend/src/lib/quizApi.ts
 
-/**
- * Quiz API functions.
- *
- * The browser calls:
- *   /api/backend/quizzes/...
- *
- * Next.js proxy forwards to FastAPI:
- *   http://127.0.0.1:8000/quizzes/...
- *
- * This keeps the httpOnly auth cookie working properly.
- */
+/* -------------------------------------------------------------------------- */
+/* Quiz API Import                                                             */
+/* Quiz requests use the shared apiFetch helper so all calls go through the    */
+/* Next.js backend proxy with authentication cookies included.                 */
+/* -------------------------------------------------------------------------- */
 
 import { apiFetch } from "./apiFetch";
+
+/* -------------------------------------------------------------------------- */
+/* Frontend Quiz Types                                                         */
+/* These types describe the quiz attempt, questions, answer feedback, and final*/
+/* result objects used by the quiz page.                                       */
+/* -------------------------------------------------------------------------- */
 
 export type RevealMode = "end" | "after_each";
 
@@ -57,6 +57,12 @@ export type QuizAnswerResult = {
   isCorrect: boolean | null;
   explanation: string | null;
 };
+
+/* -------------------------------------------------------------------------- */
+/* Raw Backend Quiz Types                                                      */
+/* These types document the flexible backend response shapes, including both   */
+/* snake_case and camelCase field names from different development stages.     */
+/* -------------------------------------------------------------------------- */
 
 type RawQuizQuestion = {
   id: number | string;
@@ -114,6 +120,12 @@ type RawQuizAnswerResult = {
   explanation?: string | null;
 };
 
+/* -------------------------------------------------------------------------- */
+/* Quiz Question Normalisation                                                 */
+/* Converts one backend question into the frontend QuizQuestion shape, using   */
+/* safe defaults where the backend response is missing optional fields.        */
+/* -------------------------------------------------------------------------- */
+
 function normaliseQuestion(question: RawQuizQuestion): QuizQuestion {
   return {
     id: String(question.id),
@@ -132,6 +144,12 @@ function normaliseQuestion(question: RawQuizQuestion): QuizQuestion {
     isCorrect: question.isCorrect ?? question.is_correct ?? null,
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Quiz Attempt Normalisation                                                  */
+/* Converts a full backend quiz attempt into the frontend shape used for the   */
+/* quiz screen, timer, answer state, and review page.                          */
+/* -------------------------------------------------------------------------- */
 
 function normaliseAttempt(attempt: RawQuizAttempt): QuizAttempt {
   const questions = Array.isArray(attempt.questions)
@@ -158,6 +176,12 @@ function normaliseAttempt(attempt: RawQuizAttempt): QuizAttempt {
     questions,
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Quiz Result Normalisation                                                   */
+/* Builds a complete final result, calculating missing score values from the   */
+/* question list when the backend does not return them directly.               */
+/* -------------------------------------------------------------------------- */
 
 function normaliseResult(attempt: RawQuizAttempt): QuizResult {
   const normalised = normaliseAttempt(attempt);
@@ -191,6 +215,12 @@ function normaliseResult(attempt: RawQuizAttempt): QuizResult {
   };
 }
 
+/* -------------------------------------------------------------------------- */
+/* Answer Result Normalisation                                                 */
+/* Converts one answer-save response into the shape used by the quiz page when */
+/* showing selected answers and optional immediate feedback.                   */
+/* -------------------------------------------------------------------------- */
+
 function normaliseAnswerResult(data: RawQuizAnswerResult): QuizAnswerResult {
   return {
     questionId: String(data.questionId ?? data.question_id ?? ""),
@@ -203,6 +233,12 @@ function normaliseAnswerResult(data: RawQuizAnswerResult): QuizAnswerResult {
     explanation: data.explanation ?? null,
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Generate Quiz Request                                                       */
+/* Sends quiz settings and the selected note id to the backend so FastAPI can  */
+/* generate and save a new quiz attempt.                                       */
+/* -------------------------------------------------------------------------- */
 
 export async function generateQuiz(payload: {
   noteId: string;
@@ -225,6 +261,12 @@ export async function generateQuiz(payload: {
   return normaliseAttempt(data);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Get Quiz Attempt Request                                                    */
+/* Loads one quiz attempt by id so the quiz page can show the questions, timer,*/
+/* saved answers, and completion state.                                        */
+/* -------------------------------------------------------------------------- */
+
 export async function getQuizAttempt(attemptId: string): Promise<QuizAttempt> {
   const data = await apiFetch<RawQuizAttempt>(
     `/quizzes/${encodeURIComponent(attemptId)}`,
@@ -235,6 +277,12 @@ export async function getQuizAttempt(attemptId: string): Promise<QuizAttempt> {
 
   return normaliseAttempt(data);
 }
+
+/* -------------------------------------------------------------------------- */
+/* Save Quiz Answer Request                                                    */
+/* Sends one selected answer to the backend and returns any answer feedback    */
+/* needed by the current reveal mode.                                          */
+/* -------------------------------------------------------------------------- */
 
 export async function answerQuizQuestion(payload: {
   attemptId: string;
@@ -254,6 +302,12 @@ export async function answerQuizQuestion(payload: {
 
   return normaliseAnswerResult(data);
 }
+
+/* -------------------------------------------------------------------------- */
+/* Submit Quiz Attempt Request                                                 */
+/* Finishes the quiz attempt, sends the time taken if available, and returns   */
+/* the final scored result for the review screen.                              */
+/* -------------------------------------------------------------------------- */
 
 export async function submitQuizAttempt(payload: {
   attemptId: string;

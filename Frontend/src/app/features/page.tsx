@@ -2,7 +2,16 @@
 
 "use client";
 
-// src/app/features/page.tsx
+
+/* -------------------------------------------------------------------------- */
+/* File Overview */
+/* Features Page. Presents the main MediMind features and explains how each feature supports health learning and review. */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Imports */
+/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
+/* -------------------------------------------------------------------------- */
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -12,19 +21,38 @@ import type { ReactNode } from "react";
 import Footer from "../../components/Footer";
 import { useI18n } from "../../i18n/I18nProvider";
 
+/* -------------------------------------------------------------------------- */
+/* Dynamic Component Loading */
+/* Loads a component on the client when server rendering would create hydration or browser-only issues. */
+/* -------------------------------------------------------------------------- */
+
 const PublicNav = dynamic(() => import("../../components/PublicNav"), {
   ssr: false,
 });
 
-/* ----------------------------- Icon components ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Icon Check Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconCheck() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
       ✓
     </span>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Icon Circle Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconCircle({ children }: { children: ReactNode }) {
   return (
@@ -33,6 +61,11 @@ function IconCircle({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Icon Book Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconBook() {
   return (
@@ -44,7 +77,17 @@ function IconBook() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Icon Message Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function IconMessage() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
@@ -58,6 +101,11 @@ function IconMessage() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Icon Chart Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function IconChart() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -67,6 +115,11 @@ function IconChart() {
     </svg>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Icon Sparkle Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconSparkle() {
   return (
@@ -82,7 +135,17 @@ function IconSparkle() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Icon Quiz Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function IconQuiz() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
@@ -96,7 +159,6 @@ function IconQuiz() {
   );
 }
 
-/* ----------------------------- Shared styles ----------------------------- */
 
 const pageShell =
   "min-h-screen bg-white text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-50";
@@ -112,7 +174,11 @@ const outlineButton =
 const cardBase =
   "rounded-2xl border border-slate-200 bg-white shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-900";
 
-/* ----------------------------- Main page component ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Main Page Component */
+/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
+/* -------------------------------------------------------------------------- */
 
 export default function FeaturesPage() {
   const { t } = useI18n();
@@ -252,11 +318,23 @@ export default function FeaturesPage() {
     [tt]
   );
 
+  /* -------------------------------------------------------------------------- */
+  /* Public Page Shell */
+  /* Wraps the public page content with consistent layout, theme, and text styles. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <main className={pageShell}>
+      {/*
+        Public Navigation
+        Loads the shared navigation for visitors before the page content.
+      */}
       <PublicNav />
 
-      {/* Hero section */}
+      {/*
+        Main Content Section
+        Presents the primary explanation cards and public information for this page.
+      */}
       <section className="mx-auto max-w-6xl px-6 pb-14 pt-12">
         <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
           <div>
@@ -299,7 +377,6 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Intro section */}
       <section className="bg-slate-50 transition-colors dark:bg-slate-900">
         <div className="mx-auto max-w-6xl px-6 py-14 text-center">
           <h2 className={`text-2xl font-semibold tracking-tight sm:text-3xl ${headingText}`}>
@@ -315,7 +392,6 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Main features grid */}
       <section className="mx-auto max-w-6xl px-6 py-14">
         <div className="grid gap-6 md:grid-cols-2">
           {features.map((feature) => (
@@ -350,7 +426,6 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* How it works section */}
       <section className="bg-slate-50 transition-colors dark:bg-slate-900">
         <div className="mx-auto max-w-6xl px-6 py-14">
           <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
@@ -393,7 +468,6 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Example feedback section */}
       <section className="mx-auto max-w-6xl px-6 py-14">
         <div className="text-center">
           <h2 className={`text-2xl font-semibold tracking-tight sm:text-3xl ${headingText}`}>
@@ -425,7 +499,6 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* CTA section */}
       <section className="mx-auto max-w-7xl px-6 py-16">
         <div className="rounded-3xl bg-blue-600 px-6 py-10 text-center shadow-lg sm:px-10">
           <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
@@ -457,8 +530,11 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Footer */}
       <div className="mx-auto max-w-6xl px-6 pb-12 pt-10">
+        {/*
+          Public Footer
+          Shows the shared footer at the bottom of the public page.
+        */}
         <Footer />
       </div>
     </main>

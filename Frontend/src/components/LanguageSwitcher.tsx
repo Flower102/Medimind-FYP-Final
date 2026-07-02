@@ -1,12 +1,28 @@
 "use client";
 
-// /src/components/LanguageSwitcher.tsx
+/* -------------------------------------------------------------------------- */
+/* Language Switcher Imports                                                   */
+/* These imports provide local state, translation context, and the list of      */
+/* supported languages displayed in the dropdown.                              */
+/* -------------------------------------------------------------------------- */
 
 import { useState } from "react";
 import { useI18n } from "../i18n/I18nProvider";
 import { LANGUAGES } from "../i18n/translations";
 
+/* -------------------------------------------------------------------------- */
+/* Language Switcher Component                                                 */
+/* This component lets the user choose the active language for the interface.   */
+/* It reads and updates the language through the shared i18n provider.          */
+/* -------------------------------------------------------------------------- */
+
 export default function LanguageSwitcher() {
+  /* ------------------------------------------------------------------------ */
+  /* Component State                                                           */
+  /* The language comes from global i18n state, while the open flag controls   */
+  /* whether the dropdown menu is visible.                                     */
+  /* ------------------------------------------------------------------------ */
+
   const { lang, setLang } = useI18n();
   const [open, setOpen] = useState(false);
 
@@ -14,6 +30,12 @@ export default function LanguageSwitcher() {
 
   return (
     <div className="relative">
+      {/* -------------------------------------------------------------------- */}
+      {/* Dropdown Trigger                                                      */}
+      {/* This button shows the current language code and opens or closes the   */}
+      {/* language list when the user clicks it.                               */}
+      {/* -------------------------------------------------------------------- */}
+
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -22,6 +44,12 @@ export default function LanguageSwitcher() {
       >
         {currentLang.toUpperCase()} <span aria-hidden>▾</span>
       </button>
+
+      {/* -------------------------------------------------------------------- */}
+      {/* Language Options Menu                                                 */}
+      {/* When open, this menu lists every supported language and updates the   */}
+      {/* globl language setting when the user selects one.           */}
+      {/* -------------------------------------------------------------------- */}
 
       {open && (
         <div

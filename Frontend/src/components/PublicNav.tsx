@@ -1,6 +1,15 @@
 "use client";
 
-// /src/components/PublicNav.tsx
+
+/* -------------------------------------------------------------------------- */
+/* File Overview */
+/* Public Navigation Component. Provides the shared public navigation bar, language switcher, account actions, profile display, and theme controls. */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Imports */
+/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
+/* -------------------------------------------------------------------------- */
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -8,6 +17,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useI18n } from "@/src/i18n/I18nProvider";
+
+/* -------------------------------------------------------------------------- */
+/* Type Definitions */
+/* Defines the data shapes used for props, API responses, form values, and page state. */
+/* -------------------------------------------------------------------------- */
 
 type CurrentUser = {
   id: number;
@@ -18,7 +32,17 @@ type CurrentUser = {
   avatar_url?: string | null;
 };
 
+/* -------------------------------------------------------------------------- */
+/* Brand Icon Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function BrandIcon() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm shadow-blue-600/30 dark:bg-blue-500">
       <svg
@@ -36,6 +60,11 @@ function BrandIcon() {
     </span>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Icon User Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconUser() {
   return (
@@ -61,7 +90,17 @@ function IconUser() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Icon Dots Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function IconDots() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <svg
       width="22"
@@ -76,6 +115,11 @@ function IconDots() {
     </svg>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Icon Moon Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconMoon() {
   return (
@@ -96,7 +140,17 @@ function IconMoon() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Icon Sun Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function IconSun() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <svg
       width="20"
@@ -119,6 +173,11 @@ function IconSun() {
     </svg>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Static Page Data */
+/* Stores reusable labels, routes, lists, or settings that stay the same while the component renders. */
+/* -------------------------------------------------------------------------- */
 
 const publicNavItems = [
   {
@@ -143,10 +202,20 @@ const publicNavItems = [
   },
 ];
 
+/* -------------------------------------------------------------------------- */
+/* Get Initial Dark Mode Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
+
 function getInitialDarkMode() {
   if (typeof window === "undefined") return false;
   return window.localStorage.getItem("mm_dark") === "1";
 }
+
+/* -------------------------------------------------------------------------- */
+/* Apply Dark Mode Helper */
+/* Connects browser-level settings or events to the React component state. */
+/* -------------------------------------------------------------------------- */
 
 function applyDarkMode(isDark: boolean) {
   if (typeof document === "undefined") return;
@@ -154,6 +223,11 @@ function applyDarkMode(isDark: boolean) {
   document.documentElement.classList.toggle("dark", isDark);
   document.documentElement.style.colorScheme = isDark ? "dark" : "light";
 }
+
+/* -------------------------------------------------------------------------- */
+/* Get Display Name Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
 
 function getDisplayName(user: CurrentUser) {
   const fullName = `${user.first_name ?? ""} ${user.surname ?? ""}`.trim();
@@ -166,9 +240,19 @@ function getDisplayName(user: CurrentUser) {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Get Initial Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
+
 function getInitial(user: CurrentUser) {
   return getDisplayName(user).charAt(0).toUpperCase();
 }
+
+/* -------------------------------------------------------------------------- */
+/* Get Avatar Url Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
 
 function getAvatarUrl(url?: string | null) {
   if (!url) return "";
@@ -179,7 +263,17 @@ function getAvatarUrl(url?: string | null) {
   return url;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Main Page Component */
+/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
+/* -------------------------------------------------------------------------- */
+
 export default function PublicNav() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useI18n();
@@ -191,6 +285,11 @@ export default function PublicNav() {
     },
     [t]
   );
+
+  /* -------------------------------------------------------------------------- */
+  /* State Values */
+  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
+  /* -------------------------------------------------------------------------- */
 
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [checkingUser, setCheckingUser] = useState(true);
@@ -216,6 +315,11 @@ export default function PublicNav() {
         },
       ]
     : translatedPublicNavItems;
+
+  /* -------------------------------------------------------------------------- */
+  /* Side Effects */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
     let cancelled = false;
@@ -250,11 +354,21 @@ export default function PublicNav() {
     };
   }, []);
 
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     applyDarkMode(dark);
     window.localStorage.setItem("mm_dark", dark ? "1" : "0");
     window.dispatchEvent(new Event("mm:storage"));
   }, [dark]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
     function handleStorageChange() {
@@ -271,6 +385,11 @@ export default function PublicNav() {
       window.removeEventListener("mm:storage", handleStorageChange);
     };
   }, []);
+
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -292,6 +411,11 @@ export default function PublicNav() {
     };
   }, []);
 
+  /* -------------------------------------------------------------------------- */
+  /* Sign Out And Go Home Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
+
   async function signOutAndGoHome() {
     try {
       await fetch("/api/backend/auth/signout", {
@@ -305,6 +429,11 @@ export default function PublicNav() {
       router.refresh();
     }
   }
+
+  /* -------------------------------------------------------------------------- */
+  /* Switch Account Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   async function switchAccount() {
     try {
@@ -320,9 +449,22 @@ export default function PublicNav() {
     }
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <header className="relative z-50 border-b border-slate-200 bg-white shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-950">
+      {/*
+        Navigation Content Container
+        Aligns brand, links, account menu, settings menu, and mobile controls.
+      */}
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-4">
+        {/*
+          Public Brand Link
+          Shows the MediMind logo and returns users to the landing page.
+        */}
         <Link href="/" className="flex items-center gap-3">
           <BrandIcon />
 
@@ -337,6 +479,10 @@ export default function PublicNav() {
           </div>
         </Link>
 
+        {/*
+          Desktop Public Links
+          Displays public navigation links on larger screens.
+        */}
         <nav className="hidden items-center gap-2 md:flex">
           {navItems.map((item) => {
             const active =
@@ -360,8 +506,16 @@ export default function PublicNav() {
           })}
         </nav>
 
+        {/*
+          Public Utility Controls
+          Groups account access, theme settings, language switcher, and mobile menu controls.
+        */}
         <div className="flex items-center gap-3">
           <div className="relative" ref={accountRef}>
+            {/*
+              Signed-Out Account Entry
+              Shows the sign-in button when no user is currently authenticated.
+            */}
             {!user ? (
               <Link
                 href="/auth/signin"
@@ -372,6 +526,10 @@ export default function PublicNav() {
               </Link>
             ) : (
               <>
+                {/*
+                  Mobile Menu Button
+                  Opens or closes the mobile public navigation menu.
+                */}
                 <button
                   type="button"
                   onClick={() => setAccountOpen((value) => !value)}
@@ -396,6 +554,10 @@ export default function PublicNav() {
                   )}
                 </button>
 
+                {/*
+                  Signed-In Account Dropdown
+                  Shows profile, switch-account, and sign-out actions for authenticated users.
+                */}
                 {accountOpen && (
                   <div
                     className="absolute right-0 mt-3 w-72 rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
@@ -475,11 +637,19 @@ export default function PublicNav() {
               <IconDots />
             </button>
 
+            {/*
+              Public Settings Dropdown
+              Shows theme and language controls in the public navigation.
+            */}
             {settingsOpen && (
               <div
                 className="absolute right-0 mt-3 w-72 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
                 style={{ zIndex: 9999 }}
               >
+                {/*
+                  Mobile Menu Toggle
+                  Opens the mobile public menu on smaller screens.
+                */}
                 <button
                   type="button"
                   onClick={() => {

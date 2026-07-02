@@ -1,10 +1,23 @@
 # /app/schemas.py
 
+# ---------------------------------------------------------------------
+# Imports and Type Helpers
+# ---------------------------------------------------------------------
+# This section imports Pydantic, datetime, and typing tools used by API schemas.
+# Schemas validate request bodies and shape the responses returned to the frontend.
+# ---------------------------------------------------------------------
 from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional, Literal
 
+
+# ---------------------------------------------------------------------
+# Authentication Request Schemas
+# ---------------------------------------------------------------------
+# These schemas validate signup, signin, and email verification requests.
+# They make sure emails, passwords, and verification codes have the expected shape.
+# ---------------------------------------------------------------------
 class SignUpIn(BaseModel):
     first_name: str = Field(min_length=1, max_length=100)
     surname: str = Field(min_length=1, max_length=100)
@@ -24,6 +37,12 @@ class ResendVerify(BaseModel):
     email: EmailStr
 
 
+# ---------------------------------------------------------------------
+# Shared Authentication Response Schemas
+# ---------------------------------------------------------------------
+# These schemas define common outputs for tokens, user details, errors, and success.
+# They keep frontend API handling consistent across authentication routes.
+# ---------------------------------------------------------------------
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -42,6 +61,12 @@ class UserOut(BaseModel):
 
 
 
+# ---------------------------------------------------------------------
+# Profile Update Schema
+# ---------------------------------------------------------------------
+# This schema describes editable profile fields for account settings.
+# All fields are optional so the frontend can update one value at a time.
+# ---------------------------------------------------------------------
 class UserProfileUpdateIn(BaseModel):
     first_name: Optional[str] = Field(default=None, max_length=100)
     surname: Optional[str] = Field(default=None, max_length=100)
@@ -60,6 +85,13 @@ class OkOut(BaseModel):
 # Account / settings schemas
 # -------------------------
 
+
+# ---------------------------------------------------------------------
+# Account Settings Schemas
+# ---------------------------------------------------------------------
+# These schemas support profile editing and password changes from Settings.
+# They validate lengths before the route logic updates the database.
+# ---------------------------------------------------------------------
 class UserProfileUpdateIn(BaseModel):
     first_name: Optional[str] = Field(default=None, max_length=100)
     surname: Optional[str] = Field(default=None, max_length=100)
@@ -71,6 +103,12 @@ class ChangePasswordIn(BaseModel):
     new_password: str = Field(min_length=8, max_length=72)    
     
 
+# ---------------------------------------------------------------------
+# Notes Schemas
+# ---------------------------------------------------------------------
+# These schemas define how notes are created, updated, and returned.
+# They include learning metadata such as reflection, confidence, and favourite status.
+# ---------------------------------------------------------------------
 class NoteBase(BaseModel):
     title: Optional[str] = None
     content: str
@@ -107,6 +145,13 @@ class NoteOut(NoteBase):
 # Chat session schemas
 # -------------------------
 
+
+# ---------------------------------------------------------------------
+# Chat Session Schemas
+# ---------------------------------------------------------------------
+# These schemas validate saved chatbot sessions and messages.
+# They let the frontend save, list, favourite, and reopen AI conversations.
+# ---------------------------------------------------------------------
 class ChatMessageCreate(BaseModel):
     role: str
     content: str
@@ -161,6 +206,12 @@ class ChatSessionDetailOut(ChatSessionOut):
     messages: list[ChatMessageOut] = Field(default_factory=list)
 
 
+# ---------------------------------------------------------------------
+# Quiz Question and Attempt Schemas
+# ---------------------------------------------------------------------
+# These schemas describe quiz questions, answers, attempts, and results.
+# They support both the live quiz page and the review/results screens.
+# ---------------------------------------------------------------------
 class QuizQuestionPublicOut(BaseModel):
     id: int
     position: int
@@ -251,6 +302,13 @@ class QuizAttemptSummaryOut(BaseModel):
     class Config:
         from_attributes = True
 
+
+# ---------------------------------------------------------------------
+# Password Reset and Delete Account Schemas
+# ---------------------------------------------------------------------
+# These schemas validate forgot-password, reset-code, reset-password, and delete-account forms.
+# They keep security-sensitive account actions structured and predictable.
+# ---------------------------------------------------------------------
 class ForgotPasswordIn(BaseModel):
     email: EmailStr
 

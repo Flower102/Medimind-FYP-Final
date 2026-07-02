@@ -1,25 +1,39 @@
 "use client";
 
-/**
- * src/app/ConditionOfUse/page.tsx
- * Conditions of Use page.
- * Fixes dark-mode text contrast and uses Tailwind canonical important classes.
- */
+/* -------------------------------------------------------------------------- */
+/* Conditions Page Imports                                                     */
+/* These imports provide the shared public navigation, footer, and translation */
+/* helper used to render the legal information page.                           */
+/* -------------------------------------------------------------------------- */
 
 import PublicNav from "../../components/PublicNav";
 import Footer from "../../components/Footer";
 import { useI18n } from "../../i18n/I18nProvider";
 
-/* ----------------------------- Translation fallback helper ----------------------------- */
+/* -------------------------------------------------------------------------- */
+/* Translation Fallback Helper                                                 */
+/* This helper prevents missing translation keys from appearing on screen. It  */
+/* returns a readable fallback whenever the translated value is unavailable.    */
+/* -------------------------------------------------------------------------- */
 
 function safeText(value: string, key: string, fallback: string) {
   if (!value || value === key) return fallback;
   return value;
 }
 
-/* ----------------------------- Page component ----------------------------- */
+/* -------------------------------------------------------------------------- */
+/* Conditions of Use Page                                                      */
+/* This page explains the rules and limitations of MediMind Lite in simple     */
+/* language so users understand how the app should and should not be used.     */
+/* -------------------------------------------------------------------------- */
 
 export default function ConditionOfUsePage() {
+  /* ------------------------------------------------------------------------ */
+  /* Translation Setup                                                         */
+  /* The page title uses the i18n system but falls back to English if the      */
+  /* translation key is missing.                                               */
+  /* ------------------------------------------------------------------------ */
+
   const { t } = useI18n();
 
   const title = safeText(
@@ -27,6 +41,12 @@ export default function ConditionOfUsePage() {
     "conditions.title",
     "Conditions of Use"
   );
+
+  /* ------------------------------------------------------------------------ */
+  /* Conditions Content                                                        */
+  /* Each object represents one visible legal section. Keeping the text in an  */
+  /* array makes the page easier to update and render consistently.            */
+  /* ------------------------------------------------------------------------ */
 
   const sections = [
     {
@@ -65,15 +85,31 @@ export default function ConditionOfUsePage() {
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900! transition-colors dark:bg-slate-950 dark:text-white!">
-      {/* Shared navigation */}
+      {/* -------------------------------------------------------------------- */}
+      {/* Shared Public Navigation                                              */}
+      {/* The public navigation gives users access to the main public pages and */}
+      {/* keeps the legal page consistent with the rest of the site.            */}
+      {/* -------------------------------------------------------------------- */}
+
       <PublicNav />
 
-      {/* Conditions content card */}
+      {/* -------------------------------------------------------------------- */}
+      {/* Conditions Content Card                                               */}
+      {/* This central card contains the page title and each conditions section  */}
+      {/* in a readable layout with light and dark mode support.                */}
+      {/* -------------------------------------------------------------------- */}
+
       <section className="mx-auto max-w-3xl px-6 py-14">
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-900">
           <h1 className="text-3xl font-semibold tracking-tight text-slate-950! dark:text-white!">
             {title}
           </h1>
+
+          {/* ---------------------------------------------------------------- */}
+          {/* Conditions Section List                                           */}
+          {/* The array is rendered into repeated heading and paragraph blocks, */}
+          {/* keeping all legal sections visually consistent.                   */}
+          {/* ---------------------------------------------------------------- */}
 
           <div className="mt-10 space-y-8">
             {sections.map((section) => (
@@ -91,7 +127,12 @@ export default function ConditionOfUsePage() {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* -------------------------------------------------------------------- */}
+      {/* Page Footer                                                           */}
+      {/* The shared footer closes the public page and keeps contact/navigation */}
+      {/* information consistent across the website.                            */}
+      {/* -------------------------------------------------------------------- */}
+
       <div className="mx-auto max-w-3xl px-6 pb-12">
         <Footer />
       </div>

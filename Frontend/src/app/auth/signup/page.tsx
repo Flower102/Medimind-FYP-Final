@@ -1,22 +1,39 @@
 "use client";
 
-// src/app/auth/signup/page.tsx
-// I keep this page self-contained so the sign-up page has its own three-dot settings menu.
+
+/* -------------------------------------------------------------------------- */
+/* File Overview */
+/* Sign Up Page. Creates new accounts, validates registration details, starts email verification, and manages page-level accessibility options. */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Imports */
+/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
+/* -------------------------------------------------------------------------- */
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 
-import ReactiveMascot from "../../../components/ReactiveMascot";
+
 import MediMindLogo from "../../../../MediMindLogo";
 import LanguageSwitcher from "../../../components/LanguageSwitcher";
 import { useI18n } from "../../../i18n/I18nProvider";
 
 import { apiFetch, ApiError } from "@/src/lib/apiFetch";
 
-/* ----------------------------- Menu icons ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Icon Dots Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconDots() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle cx="5" cy="12" r="1.7" fill="currentColor" />
@@ -25,6 +42,11 @@ function IconDots() {
     </svg>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Icon Moon Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconMoon() {
   return (
@@ -39,7 +61,17 @@ function IconMoon() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Icon Sun Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function IconSun() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
@@ -57,17 +89,31 @@ function IconSun() {
   );
 }
 
-/* ----------------------------- Shared helpers ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Safe Text Helper */
+/* Keeps validation, detection, or text-cleaning logic separate from the main render code. */
+/* -------------------------------------------------------------------------- */
 
 function safeText(value: string, key: string, fallback: string) {
   if (!value || value === key) return fallback;
   return value;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Apply Dark Mode Helper */
+/* Connects browser-level settings or events to the React component state. */
+/* -------------------------------------------------------------------------- */
+
 function applyDarkMode(isDark: boolean) {
   document.documentElement.classList.toggle("dark", isDark);
   document.documentElement.style.colorScheme = isDark ? "dark" : "light";
 }
+
+/* -------------------------------------------------------------------------- */
+/* Subscribe To Dark Mode Helper */
+/* Connects browser-level settings or events to the React component state. */
+/* -------------------------------------------------------------------------- */
 
 function subscribeToDarkMode(callback: () => void) {
   window.addEventListener("storage", callback);
@@ -79,36 +125,67 @@ function subscribeToDarkMode(callback: () => void) {
   };
 }
 
+/* -------------------------------------------------------------------------- */
+/* Get Dark Mode Snapshot Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
+
 function getDarkModeSnapshot() {
   if (typeof window === "undefined") return false;
   return window.localStorage.getItem("mm_dark") === "1";
 }
 
+/* -------------------------------------------------------------------------- */
+/* Get Dark Mode Server Snapshot Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
+
 function getDarkModeServerSnapshot() {
   return false;
 }
 
-/* ----------------------------- Three-dot settings menu ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Auth Settings Menu Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function AuthSettingsMenu() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const { t } = useI18n();
+
+  /* -------------------------------------------------------------------------- */
+  /* State Values */
+  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
+  /* -------------------------------------------------------------------------- */
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  // I read the saved theme without calling setState inside an effect.
   const dark = useSyncExternalStore(
     subscribeToDarkMode,
     getDarkModeSnapshot,
     getDarkModeServerSnapshot
   );
 
-  // I keep the document class synced with the saved theme.
+  /* -------------------------------------------------------------------------- */
+  /* Side Effects */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     applyDarkMode(dark);
   }, [dark]);
 
-  // I close the dropdown when I click outside it.
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (!menuRef.current) return;
@@ -125,6 +202,11 @@ function AuthSettingsMenu() {
     };
   }, []);
 
+  /* -------------------------------------------------------------------------- */
+  /* Toggle Dark Mode Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
+
   function toggleDarkMode() {
     const nextDark = !dark;
 
@@ -134,6 +216,11 @@ function AuthSettingsMenu() {
 
     setMenuOpen(false);
   }
+
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
 
   return (
     <div className="relative" ref={menuRef}>
@@ -149,7 +236,6 @@ function AuthSettingsMenu() {
 
       {menuOpen && (
         <div className="absolute right-0 mt-3 w-64 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl transition-colors dark:border-slate-700 dark:bg-slate-900">
-          {/* I keep the home link at the top of the menu. */}
           <Link
             href="/"
             onClick={() => setMenuOpen(false)}
@@ -158,7 +244,6 @@ function AuthSettingsMenu() {
             {safeText(t("nav.home"), "nav.home", "Home")}
           </Link>
 
-          {/* I keep the theme toggle below home. */}
           <button
             type="button"
             onClick={toggleDarkMode}
@@ -177,12 +262,15 @@ function AuthSettingsMenu() {
 
           <div className="my-2 border-t border-slate-100 dark:border-slate-700" />
 
-          {/* I keep the language switcher inside the menu. */}
           <div className="rounded-xl px-4 py-3">
             <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-300">
               {safeText(t("language.label"), "language.label", "Language")}
             </div>
 
+            {/*
+              Language Selector
+              Lets the user change language from the authentication page.
+            */}
             <LanguageSwitcher />
           </div>
         </div>
@@ -191,7 +279,11 @@ function AuthSettingsMenu() {
   );
 }
 
-/* ----------------------------- Validation helpers ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Validate Name Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function validateName(label: string, name: string) {
   const v = name.trim();
@@ -204,6 +296,11 @@ function validateName(label: string, name: string) {
 
   return "";
 }
+
+/* -------------------------------------------------------------------------- */
+/* Validate Email Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function validateEmail(email: string) {
   const v = email.trim().toLowerCase();
@@ -238,6 +335,11 @@ function validateEmail(email: string) {
   return "";
 }
 
+/* -------------------------------------------------------------------------- */
+/* Password Rules Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function passwordRules(password: string) {
   return {
     minLen: password.length >= 8,
@@ -247,6 +349,11 @@ function passwordRules(password: string) {
     hasSpecial: /[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\\/]/.test(password),
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Validate Password Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function validatePassword(password: string) {
   if (!password) return "Password is required.";
@@ -263,11 +370,25 @@ function validatePassword(password: string) {
   return "";
 }
 
-/* ----------------------------- Page component ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Main Page Component */
+/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
+/* -------------------------------------------------------------------------- */
 
 export default function SignUpPage() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const { t } = useI18n();
   const router = useRouter();
+
+  /* -------------------------------------------------------------------------- */
+  /* State Values */
+  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
+  /* -------------------------------------------------------------------------- */
 
   const [firstName, setFirstName] = useState("");
   const [surname, setSurname] = useState("");
@@ -275,7 +396,6 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
-  const [focusMode, setFocusMode] = useState<"none" | "email" | "password">("none");
   const [busy, setBusy] = useState(false);
 
   const [touched, setTouched] = useState({
@@ -288,7 +408,11 @@ export default function SignUpPage() {
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
   const [debugError, setDebugError] = useState<string | null>(null);
 
-  // I keep a small local draft so the form does not clear by accident.
+  /* -------------------------------------------------------------------------- */
+  /* Side Effects */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     const saved = localStorage.getItem("mm_signup_draft");
     if (!saved) return;
@@ -300,9 +424,13 @@ export default function SignUpPage() {
       setEmail(v.email ?? "");
       setPassword(v.password ?? "");
     } catch {
-      // I ignore broken saved drafts.
     }
   }, []);
+
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
     localStorage.setItem(
@@ -311,7 +439,17 @@ export default function SignUpPage() {
     );
   }, [firstName, surname, email, password]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Rules Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
+
   const rules = useMemo(() => passwordRules(password), [password]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Password Strength Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
 
   const passwordStrength = useMemo(() => {
     let score = 0;
@@ -324,6 +462,11 @@ export default function SignUpPage() {
     return score;
   }, [rules]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Strength Label Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
+
   const strengthLabel = useMemo(() => {
     if (!password) return "";
     if (passwordStrength <= 1) return "Weak";
@@ -332,27 +475,46 @@ export default function SignUpPage() {
     return "Very strong";
   }, [password, passwordStrength]);
 
+  /* -------------------------------------------------------------------------- */
+  /* First Name Error Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
+
   const firstNameError = useMemo(
     () => (touched.firstName ? validateName("First name", firstName) : ""),
     [touched.firstName, firstName]
   );
+
+  /* -------------------------------------------------------------------------- */
+  /* Surname Error Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
 
   const surnameError = useMemo(
     () => (touched.surname ? validateName("Surname", surname) : ""),
     [touched.surname, surname]
   );
 
+  /* -------------------------------------------------------------------------- */
+  /* Email Error Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
+
   const emailError = useMemo(
     () => (touched.email ? validateEmail(email) : ""),
     [touched.email, email]
   );
+
+  /* -------------------------------------------------------------------------- */
+  /* Password Error Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
 
   const passwordError = useMemo(
     () => (touched.password ? validatePassword(password) : ""),
     [touched.password, password]
   );
 
-  // I keep the input styles dark-mode friendly.
   const inputBase =
     "mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-900 outline-none transition-colors focus:ring-2 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500";
 
@@ -457,15 +619,27 @@ export default function SignUpPage() {
     }
   };
 
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Authentication Page Shell */
+  /* Wraps the authentication screen with the page background and responsive layout. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6 transition-colors dark:bg-slate-950">
       <div className="relative grid w-full max-w-5xl grid-cols-1 overflow-hidden rounded-3xl border border-slate-200 bg-white text-gray-700 shadow-lg transition-colors dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 md:grid-cols-2">
-        {/* I replaced the old ENG button with the three-dot menu. */}
         <div className="absolute right-6 top-6 z-20">
+          {/*
+            Authentication Settings Menu
+            Provides theme and language controls without leaving the auth page.
+          */}
           <AuthSettingsMenu />
         </div>
 
-        {/* I keep the left panel for the logo and mascot. */}
         <section className="flex flex-col justify-between bg-gray-100 p-10 transition-colors dark:bg-slate-950">
           <div>
             <Link href="/" className="inline-flex items-center gap-3 hover:opacity-90">
@@ -485,9 +659,7 @@ export default function SignUpPage() {
             </div>
           </div>
 
-          <div className="mt-10">
-            <ReactiveMascot focusMode={focusMode} />
-          </div>
+        
 
           <div className="mt-8 text-xs text-gray-500 dark:text-slate-400">
             {safeText(
@@ -498,7 +670,6 @@ export default function SignUpPage() {
           </div>
         </section>
 
-        {/* I keep the right panel for the sign-up form. */}
         <section className="p-10">
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm text-gray-500 dark:text-slate-400">
@@ -534,8 +705,11 @@ export default function SignUpPage() {
             </div>
           )}
 
+          {/*
+            Authentication Form
+            Collects the user details needed for this authentication step.
+          */}
           <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate>
-            {/* I keep the first name field here. */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                 {safeText(t("signup.firstName"), "signup.firstName", "First name")}
@@ -551,7 +725,6 @@ export default function SignUpPage() {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 onBlur={() => setTouched((x) => ({ ...x, firstName: true }))}
-                onFocus={() => setFocusMode("none")}
                 className={`${inputBase} ${firstNameError ? badBorder : okBorder}`}
               />
 
@@ -562,7 +735,6 @@ export default function SignUpPage() {
               )}
             </div>
 
-            {/* I keep the surname field here. */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                 {safeText(t("signup.surname"), "signup.surname", "Surname")}
@@ -578,7 +750,6 @@ export default function SignUpPage() {
                 value={surname}
                 onChange={(e) => setSurname(e.target.value)}
                 onBlur={() => setTouched((x) => ({ ...x, surname: true }))}
-                onFocus={() => setFocusMode("none")}
                 className={`${inputBase} ${surnameError ? badBorder : okBorder}`}
               />
 
@@ -589,7 +760,6 @@ export default function SignUpPage() {
               )}
             </div>
 
-            {/* I keep the email field here. */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                 {safeText(t("common.email"), "common.email", "Email")}
@@ -605,7 +775,6 @@ export default function SignUpPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onBlur={() => setTouched((x) => ({ ...x, email: true }))}
-                onFocus={() => setFocusMode("email")}
                 className={`${inputBase} ${emailError ? badBorder : okBorder}`}
               />
 
@@ -616,7 +785,6 @@ export default function SignUpPage() {
               )}
             </div>
 
-            {/* I keep the password field here. */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                 {safeText(t("common.password"), "common.password", "Password")}
@@ -633,7 +801,6 @@ export default function SignUpPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onBlur={() => setTouched((x) => ({ ...x, password: true }))}
-                  onFocus={() => setFocusMode("password")}
                   className={`${inputBase} pr-12 ${passwordError ? badBorder : okBorder}`}
                 />
 
@@ -657,7 +824,6 @@ export default function SignUpPage() {
                 </p>
               )}
 
-              {/* I keep the password strength bar here. */}
               <div className="mt-3">
                 <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-slate-700">
                   <div
@@ -682,7 +848,6 @@ export default function SignUpPage() {
                 )}
               </div>
 
-              {/* I keep the live password rules here. */}
               <ul className="mt-2 space-y-1 text-xs text-gray-600 dark:text-slate-400">
                 <li className={rules.minLen ? "text-green-700 dark:text-green-300" : ""}>
                   • At least 8 characters
@@ -708,7 +873,6 @@ export default function SignUpPage() {
               </ul>
             </div>
 
-            {/* I keep the submit button here. */}
             <button
               type="submit"
               disabled={busy}
@@ -719,7 +883,6 @@ export default function SignUpPage() {
                 : safeText(t("signup.submit"), "signup.submit", "Create account")}
             </button>
 
-            {/* I keep the link back to sign in here. */}
             <p className="mt-6 text-center text-sm text-gray-600 dark:text-slate-300">
               {safeText(
                 t("signup.alreadyHave"),

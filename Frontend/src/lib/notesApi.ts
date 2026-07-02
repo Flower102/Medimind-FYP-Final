@@ -1,18 +1,18 @@
 // frontend/src/lib/notesApi.ts
 
-/**
- * Notes API functions.
- *
- * The browser calls:
- *   /api/backend/notes
- *
- * Next.js proxy forwards to FastAPI:
- *   http://127.0.0.1:8000/notes
- *
- * This keeps httpOnly auth cookies working.
- */
+/* -------------------------------------------------------------------------- */
+/* Notes API Import                                                            */
+/* All note requests use the shared apiFetch helper so they go through the     */
+/* Next.js backend proxy with authentication cookies included.                 */
+/* -------------------------------------------------------------------------- */
 
 import { apiFetch } from "./apiFetch";
+
+/* -------------------------------------------------------------------------- */
+/* Note Types                                                                  */
+/* These types describe the frontend note shape, the raw backend note shape,   */
+/* and the payload used when creating or updating notes.                       */
+/* -------------------------------------------------------------------------- */
 
 export type Note = {
   id: string;
@@ -42,6 +42,12 @@ export type NotePayload = {
   isFavorite?: boolean;
 };
 
+/* -------------------------------------------------------------------------- */
+/* Note Normalisation Helper                                                   */
+/* This converts backend snake_case fields and nullable values into the safer  */
+/* frontend Note type used by pages and components.                            */
+/* -------------------------------------------------------------------------- */
+
 function normaliseNote(note: RawNote): Note {
   return {
     id: String(note.id),
@@ -54,6 +60,12 @@ function normaliseNote(note: RawNote): Note {
   };
 }
 
+/* -------------------------------------------------------------------------- */
+/* Backend Payload Converter                                                   */
+/* This converts frontend camelCase fields into the snake_case format expected */
+/* by the FastAPI notes endpoint.                                              */
+/* -------------------------------------------------------------------------- */
+
 function toBackendPayload(payload: NotePayload) {
   return {
     title: payload.title,
@@ -63,6 +75,12 @@ function toBackendPayload(payload: NotePayload) {
     is_favorite: payload.isFavorite,
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Create Note Request                                                         */
+/* Saves a new learning note in the backend database and returns the normalised*/
+/* note so the Learning Workspace can update immediately.                      */
+/* -------------------------------------------------------------------------- */
 
 export async function createNote(
   payload: Required<Pick<NotePayload, "content">> & NotePayload
@@ -75,6 +93,12 @@ export async function createNote(
   return normaliseNote(data);
 }
 
+/* -------------------------------------------------------------------------- */
+/* List Notes Request                                                          */
+/* Loads all saved notes for the signed-in user and normalises every item for  */
+/* frontend display.                                                           */
+/* -------------------------------------------------------------------------- */
+
 export async function listNotes(): Promise<Note[]> {
   const data = await apiFetch<RawNote[]>("/notes", {
     method: "GET",
@@ -83,6 +107,12 @@ export async function listNotes(): Promise<Note[]> {
   return data.map(normaliseNote);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Get Single Note Request                                                     */
+/* Loads one note by id, usually when a page needs to open or edit a specific  */
+/* saved note.                                                                 */
+/* -------------------------------------------------------------------------- */
+
 export async function getNote(noteId: string): Promise<Note> {
   const data = await apiFetch<RawNote>(`/notes/${encodeURIComponent(noteId)}`, {
     method: "GET",
@@ -90,6 +120,12 @@ export async function getNote(noteId: string): Promise<Note> {
 
   return normaliseNote(data);
 }
+
+/* -------------------------------------------------------------------------- */
+/* Update Note Request                                                         */
+/* Sends note edits to the backend, including content, reflection, confidence, */
+/* and favourite status when those fields are provided.                        */
+/* -------------------------------------------------------------------------- */
 
 export async function updateNote(
   noteId: string,
@@ -102,6 +138,12 @@ export async function updateNote(
 
   return normaliseNote(data);
 }
+
+/* -------------------------------------------------------------------------- */
+/* Delete Note Request                                                         */
+/* Deletes one saved note from the backend and returns a simple success object */
+/* so the page can remove it from local state.                                 */
+/* -------------------------------------------------------------------------- */
 
 export async function deleteNote(noteId: string): Promise<{ ok: true }> {
   await apiFetch<unknown>(`/notes/${encodeURIComponent(noteId)}`, {

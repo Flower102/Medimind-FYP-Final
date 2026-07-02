@@ -17,6 +17,13 @@ Improved error handling:
 - Every error has a plain-English message
 - Every error includes a next-step action
 """
+# ---------------------------------------------------------------------
+# Imports and AI Router Setup
+# ---------------------------------------------------------------------
+# This section imports the libraries, project settings, and router used by AI endpoints.
+# It keeps OpenAI, upload handling, authentication, and response validation in one module.
+# ---------------------------------------------------------------------
+
 
 from __future__ import annotations
 
@@ -46,6 +53,13 @@ MAX_SINGLE_FILE_BYTES = 20 * 1024 * 1024  # 20 MB
 # Shared error helper
 # ---------------------------------------------------------
 
+# ---------------------------------------------------------------------
+# Shared API Error Helper
+# ---------------------------------------------------------------------
+# This helper raises backend errors in a consistent shape.
+# It helps the frontend show clear messages and suggested actions.
+# ---------------------------------------------------------------------
+
 def raise_api_error(status_code: int, code: str, message: str, action: str):
     """
     Raises consistent API errors.
@@ -70,6 +84,13 @@ def raise_api_error(status_code: int, code: str, message: str, action: str):
 # Request/Response Schemas
 # ---------------------------------------------------------
 
+# ---------------------------------------------------------------------
+# Chat Message Schema
+# ---------------------------------------------------------------------
+# This schema validates one message sent to the AI endpoint.
+# It keeps chat roles and message text structured before calling OpenAI.
+# ---------------------------------------------------------------------
+
 class ChatMsg(BaseModel):
     """
     One message in the chat history.
@@ -84,6 +105,13 @@ class ChatMsg(BaseModel):
     role: str = Field(..., description="developer | user | assistant")
     content: str
 
+
+# ---------------------------------------------------------------------
+# Chat Request Schema
+# ---------------------------------------------------------------------
+# This schema validates the full AI chat request from the frontend.
+# It can include Learning Workspace context such as note, reflection, and confidence.
+# ---------------------------------------------------------------------
 
 class ChatRequest(BaseModel):
     """
@@ -101,6 +129,13 @@ class ChatRequest(BaseModel):
     confidence: int | None = None
 
 
+# ---------------------------------------------------------------------
+# Chat Response Schema
+# ---------------------------------------------------------------------
+# This schema defines the chatbot response returned to the frontend.
+# It includes the answer text and clickable follow-up suggestions.
+# ---------------------------------------------------------------------
+
 class ChatResponse(BaseModel):
     """
     Response sent back to the frontend chatbot page.
@@ -113,6 +148,13 @@ class ChatResponse(BaseModel):
 # ---------------------------------------------------------
 # Pydantic v1/v2 compatibility helper
 # ---------------------------------------------------------
+
+# ---------------------------------------------------------------------
+# Chat Request Compatibility Helper
+# ---------------------------------------------------------------------
+# This helper validates chat payloads with either Pydantic v1 or v2.
+# It keeps the backend safer during dependency/version changes.
+# ---------------------------------------------------------------------
 
 def validate_chat_request(raw: Any) -> ChatRequest:
     """
@@ -128,6 +170,13 @@ def validate_chat_request(raw: Any) -> ChatRequest:
 # ---------------------------------------------------------
 # Request validation helpers
 # ---------------------------------------------------------
+
+# ---------------------------------------------------------------------
+# Chat Message Validation
+# ---------------------------------------------------------------------
+# This helper checks messages before sending anything to OpenAI.
+# It prevents empty content, invalid roles, and bad confidence values.
+# ---------------------------------------------------------------------
 
 def validate_chat_messages(req: ChatRequest):
     """
@@ -170,6 +219,13 @@ def validate_chat_messages(req: ChatRequest):
         )
 
 
+# ---------------------------------------------------------------------
+# Uploaded File Validation
+# ---------------------------------------------------------------------
+# This helper checks one uploaded file before AI processing.
+# It catches empty or oversized files early with a clear user message.
+# ---------------------------------------------------------------------
+
 async def validate_uploaded_file(file: UploadFile):
     """
     Checks one uploaded file before sending it to OpenAI.
@@ -205,6 +261,13 @@ async def validate_uploaded_file(file: UploadFile):
 # ---------------------------------------------------------
 # Request parser
 # ---------------------------------------------------------
+
+# ---------------------------------------------------------------------
+# Chat Request Parser
+# ---------------------------------------------------------------------
+# This helper accepts JSON requests and multipart upload requests.
+# It returns one validated chat request plus any uploaded files.
+# ---------------------------------------------------------------------
 
 async def parse_chat_request(request: Request) -> tuple[ChatRequest, list[UploadFile]]:
     """
@@ -303,6 +366,13 @@ async def parse_chat_request(request: Request) -> tuple[ChatRequest, list[Upload
 # AI response parser
 # ---------------------------------------------------------
 
+# ---------------------------------------------------------------------
+# AI JSON Response Parser
+# ---------------------------------------------------------------------
+# This helper reads the JSON shape requested from OpenAI.
+# If the AI response is not valid JSON, it still returns a useful fallback reply.
+# ---------------------------------------------------------------------
+
 def safe_parse_ai_json(text: str) -> ChatResponse:
     """
     The prompt asks OpenAI to return JSON.
@@ -354,6 +424,13 @@ def safe_parse_ai_json(text: str) -> ChatResponse:
 # ---------------------------------------------------------
 # Prompt builders
 # ---------------------------------------------------------
+
+# ---------------------------------------------------------------------
+# AI Instruction Builder
+# ---------------------------------------------------------------------
+# This helper builds the system-style rules sent to OpenAI.
+# It controls answer style, JSON shape, safety note, and file-handling guidance.
+# ---------------------------------------------------------------------
 
 def build_developer_instructions(has_uploaded_files: bool) -> str:
     """
@@ -424,6 +501,13 @@ Style rules:
 """.strip()
 
 
+# ---------------------------------------------------------------------
+# Learning Context Builder
+# ---------------------------------------------------------------------
+# This helper adds saved note, reflection, and confidence context when available.
+# It helps the AI answer based on the user’s current learning material.
+# ---------------------------------------------------------------------
+
 def build_learning_context(req: ChatRequest) -> str:
     """
     Adds Learning Workspace context if the user came from that page.
@@ -446,6 +530,13 @@ def build_learning_context(req: ChatRequest) -> str:
     return "Learning context:\n\n" + "\n\n".join(context_parts)
 
 
+# ---------------------------------------------------------------------
+# Recent Conversation Builder
+# ---------------------------------------------------------------------
+# This helper keeps only the latest chat messages for the AI prompt.
+# It avoids sending overly large histories while preserving recent context.
+# ---------------------------------------------------------------------
+
 def build_recent_conversation(req: ChatRequest) -> str:
     """
     Keeps only the latest 20 messages to avoid sending huge histories.
@@ -466,6 +557,13 @@ def build_recent_conversation(req: ChatRequest) -> str:
 # File helpers
 # ---------------------------------------------------------
 
+# ---------------------------------------------------------------------
+# Image Upload Helper
+# ---------------------------------------------------------------------
+# This helper converts uploaded images into data URLs for OpenAI vision input.
+# It allows image files to be included directly in the model request.
+# ---------------------------------------------------------------------
+
 async def image_to_data_url(file: UploadFile) -> str:
     """
     Converts an uploaded image into a data URL for OpenAI vision input.
@@ -476,6 +574,13 @@ async def image_to_data_url(file: UploadFile) -> str:
     encoded = base64.b64encode(file_bytes).decode("utf-8")
     return f"data:{mime_type};base64,{encoded}"
 
+
+# ---------------------------------------------------------------------
+# Document Upload Helper
+# ---------------------------------------------------------------------
+# This helper uploads non-image files to OpenAI for model input.
+# It keeps file handling on the backend so API keys stay private.
+# ---------------------------------------------------------------------
 
 async def upload_file_to_openai(file: UploadFile) -> str:
     """
@@ -554,6 +659,13 @@ async def upload_file_to_openai(file: UploadFile) -> str:
 # ---------------------------------------------------------
 # OpenAI call
 # ---------------------------------------------------------
+
+# ---------------------------------------------------------------------
+# Call Openai Responses Function
+# ---------------------------------------------------------------------
+# This section contains the call_openai_responses function.
+# It keeps this important part of the module separated and easier to review later.
+# ---------------------------------------------------------------------
 
 async def call_openai_responses(
     req: ChatRequest,
@@ -731,6 +843,13 @@ Latest user message:
 # ---------------------------------------------------------
 # Route
 # ---------------------------------------------------------
+
+# ---------------------------------------------------------------------
+# AI Chat Route
+# ---------------------------------------------------------------------
+# This route receives chatbot requests from the frontend.
+# It validates input, handles uploads, calls OpenAI, and returns a structured reply.
+# ---------------------------------------------------------------------
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(

@@ -2,7 +2,16 @@
 
 "use client";
 
-// I keep the forgot-password page translated and theme-aware here.
+
+/* -------------------------------------------------------------------------- */
+/* File Overview */
+/* Forgot Password Page. Handles the full password reset journey, including email entry, code verification, and setting a new password. */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Imports */
+/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
+/* -------------------------------------------------------------------------- */
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,11 +20,25 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import LanguageSwitcher from "../../../components/LanguageSwitcher";
 import { useI18n } from "../../../i18n/I18nProvider";
 
+/* -------------------------------------------------------------------------- */
+/* Type Definitions */
+/* Defines the data shapes used for props, API responses, form values, and page state. */
+/* -------------------------------------------------------------------------- */
+
 type Step = 1 | 2 | 3;
 
-/* ----------------------------- I keep the menu icons here ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Icon Dots Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconDots() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle cx="5" cy="12" r="1.7" fill="currentColor" />
@@ -24,6 +47,11 @@ function IconDots() {
     </svg>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Icon Moon Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconMoon() {
   return (
@@ -38,7 +66,17 @@ function IconMoon() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Icon Sun Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function IconSun() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
@@ -56,17 +94,31 @@ function IconSun() {
   );
 }
 
-/* ----------------------------- I keep shared helpers here ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Safe Text Helper */
+/* Keeps validation, detection, or text-cleaning logic separate from the main render code. */
+/* -------------------------------------------------------------------------- */
 
 function safeText(value: string, key: string, fallback: string) {
   if (!value || value === key) return fallback;
   return value;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Apply Dark Mode Helper */
+/* Connects browser-level settings or events to the React component state. */
+/* -------------------------------------------------------------------------- */
+
 function applyDarkMode(isDark: boolean) {
   document.documentElement.classList.toggle("dark", isDark);
   document.documentElement.style.colorScheme = isDark ? "dark" : "light";
 }
+
+/* -------------------------------------------------------------------------- */
+/* Subscribe To Dark Mode Helper */
+/* Connects browser-level settings or events to the React component state. */
+/* -------------------------------------------------------------------------- */
 
 function subscribeToDarkMode(callback: () => void) {
   window.addEventListener("storage", callback);
@@ -78,36 +130,67 @@ function subscribeToDarkMode(callback: () => void) {
   };
 }
 
+/* -------------------------------------------------------------------------- */
+/* Get Dark Mode Snapshot Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
+
 function getDarkModeSnapshot() {
   if (typeof window === "undefined") return false;
   return window.localStorage.getItem("mm_dark") === "1";
 }
 
+/* -------------------------------------------------------------------------- */
+/* Get Dark Mode Server Snapshot Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
+
 function getDarkModeServerSnapshot() {
   return false;
 }
 
-/* ----------------------------- I keep the three-dot menu inside this page ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Auth Settings Menu Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function AuthSettingsMenu() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const { t } = useI18n();
+
+  /* -------------------------------------------------------------------------- */
+  /* State Values */
+  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
+  /* -------------------------------------------------------------------------- */
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  // I read the saved theme without calling setState inside an effect.
   const dark = useSyncExternalStore(
     subscribeToDarkMode,
     getDarkModeSnapshot,
     getDarkModeServerSnapshot
   );
 
-  // I keep the document class synced with the saved theme.
+  /* -------------------------------------------------------------------------- */
+  /* Side Effects */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     applyDarkMode(dark);
   }, [dark]);
 
-  // I close the dropdown when I click outside it.
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (!menuRef.current) return;
@@ -124,6 +207,11 @@ function AuthSettingsMenu() {
     };
   }, []);
 
+  /* -------------------------------------------------------------------------- */
+  /* Toggle Dark Mode Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
+
   function toggleDarkMode() {
     const nextDark = !dark;
 
@@ -133,6 +221,11 @@ function AuthSettingsMenu() {
 
     setMenuOpen(false);
   }
+
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
 
   return (
     <div className="relative" ref={menuRef}>
@@ -148,7 +241,6 @@ function AuthSettingsMenu() {
 
       {menuOpen && (
         <div className="absolute right-0 mt-3 w-64 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl transition-colors dark:border-slate-700 dark:bg-slate-900">
-          {/* I keep the home link at the top of the menu. */}
           <Link
             href="/"
             onClick={() => setMenuOpen(false)}
@@ -157,7 +249,6 @@ function AuthSettingsMenu() {
             {safeText(t("nav.home"), "nav.home", "Home")}
           </Link>
 
-          {/* I keep the theme toggle below home. */}
           <button
             type="button"
             onClick={toggleDarkMode}
@@ -176,7 +267,6 @@ function AuthSettingsMenu() {
 
           <div className="my-2 border-t border-slate-100 dark:border-slate-700" />
 
-          {/* I keep the language switcher inside the menu. */}
           <div className="rounded-xl px-4 py-3">
             <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-300">
               {safeText(t("language.label"), "language.label", "Language")}
@@ -190,7 +280,11 @@ function AuthSettingsMenu() {
   );
 }
 
-/* ----------------------------- I keep backend error handling here ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Get Error Message Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
 
 function getErrorMessage(code: string, tt: (key: string, fallback: string) => string) {
   switch (code) {
@@ -241,9 +335,11 @@ function getErrorMessage(code: string, tt: (key: string, fallback: string) => st
   }
 }
 
-/* ----------------------------- I keep backend response parsing here ----------------------------- */
 
-/* ----------------------------- I keep backend response parsing here ----------------------------- */
+/* -------------------------------------------------------------------------- */
+/* Read Api Error Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 async function readApiError(res: Response) {
   const data = await res.json().catch(() => ({}));
@@ -265,7 +361,11 @@ async function readApiError(res: Response) {
   return { code, message };
 }
 
-/* ----------------------------- I keep password validation here ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Get Password Checks Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
 
 function getPasswordChecks(password: string) {
   return {
@@ -277,14 +377,28 @@ function getPasswordChecks(password: string) {
   };
 }
 
+/* -------------------------------------------------------------------------- */
+/* Is Strong Password Helper */
+/* Keeps validation, detection, or text-cleaning logic separate from the main render code. */
+/* -------------------------------------------------------------------------- */
+
 function isStrongPassword(password: string) {
   const checks = getPasswordChecks(password);
   return Object.values(checks).every(Boolean);
 }
 
-/* ----------------------------- I keep the page component here ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Main Page Component */
+/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
+/* -------------------------------------------------------------------------- */
 
 export default function ForgotPasswordPage() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const router = useRouter();
   const { t } = useI18n();
 
@@ -292,6 +406,11 @@ export default function ForgotPasswordPage() {
     const value = t(key);
     return value === key ? fallback : value;
   };
+
+  /* -------------------------------------------------------------------------- */
+  /* State Values */
+  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
+  /* -------------------------------------------------------------------------- */
 
   const [step, setStep] = useState<Step>(1);
 
@@ -317,7 +436,11 @@ export default function ForgotPasswordPage() {
         ? tt("forgot.step2.description", "Enter the 6-digit code sent to your email.")
         : tt("forgot.step3.description", "Create a new secure password.");
 
-  /* Step 1: I request the reset code. */
+  /* -------------------------------------------------------------------------- */
+  /* Request Code Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
+
   async function requestCode() {
     setError("");
     setMessage("");
@@ -361,7 +484,11 @@ export default function ForgotPasswordPage() {
     }
   }
 
-  /* Step 2: I verify the reset code. */
+  /* -------------------------------------------------------------------------- */
+  /* Verify Code Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
+
   async function verifyCode() {
     setError("");
     setMessage("");
@@ -400,7 +527,11 @@ export default function ForgotPasswordPage() {
     }
   }
 
-  /* Step 3: I reset the password. */
+  /* -------------------------------------------------------------------------- */
+  /* Reset Password Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
+
   async function resetPassword() {
     setError("");
     setMessage("");
@@ -458,11 +589,24 @@ export default function ForgotPasswordPage() {
     }
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Authentication Page Shell */
+  /* Wraps the authentication screen with the page background and responsive layout. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6 transition-colors dark:bg-slate-950">
       <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-slate-900 shadow-lg transition-colors dark:border-slate-800 dark:bg-slate-900 dark:text-white">
-        {/* I keep the three-dot settings menu in the top-right corner. */}
         <div className="absolute right-6 top-6 z-20">
+          {/*
+            Authentication Settings Menu
+            Provides theme and language controls without leaving the auth page.
+          */}
           <AuthSettingsMenu />
         </div>
 
@@ -474,12 +618,20 @@ export default function ForgotPasswordPage() {
           {stepDescription}
         </p>
 
+        {/*
+          Authentication Error Message
+          Shows validation or backend errors close to the form.
+        */}
         {error && (
           <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200">
             {error}
           </div>
         )}
 
+        {/*
+          Forgot Password Success Message
+          Shows confirmation messages after reset-code or password actions succeed.
+        */}
         {message && (
           <div className="mt-5 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700 dark:border-green-900/60 dark:bg-green-950/40 dark:text-green-200">
             {message}
@@ -487,6 +639,10 @@ export default function ForgotPasswordPage() {
         )}
 
         <div className="mt-6 space-y-4">
+          {/*
+            Step 1 Email Form
+            Collects the account email so the backend can send a reset code.
+          */}
           {step === 1 && (
             <>
               <label className="block">
@@ -516,6 +672,10 @@ export default function ForgotPasswordPage() {
             </>
           )}
 
+          {/*
+            Step 2 Code Form
+            Collects the six-digit reset code sent to the user email.
+          */}
           {step === 2 && (
             <>
               <label className="block">
@@ -569,6 +729,10 @@ export default function ForgotPasswordPage() {
             </>
           )}
 
+          {/*
+            Step 3 New Password Form
+            Collects and confirms the new password before resetting the account password.
+          */}
           {step === 3 && (
             <>
               <PasswordInput
@@ -645,7 +809,11 @@ export default function ForgotPasswordPage() {
   );
 }
 
-/* ----------------------------- I keep the password input reusable here ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Password Input Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function PasswordInput({
   label,
@@ -664,6 +832,11 @@ function PasswordInput({
   onChange: (value: string) => void;
   onToggleShow: () => void;
 }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <label className="block">
       <span className="text-sm font-medium text-gray-700 dark:text-slate-200">
@@ -690,7 +863,11 @@ function PasswordInput({
   );
 }
 
-/* ----------------------------- I keep the live password rules reusable here ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Password Rules Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function PasswordRules({
   password,

@@ -1,18 +1,16 @@
-// frontend/src/app/quiz/[attemptId]/page.tsx
 
 "use client";
 
-/**
- * Quiz attempt page.
- *
- * This page:
- * - Loads one quiz attempt from the backend
- * - Lets the user answer questions
- * - Supports "answers at the end" and "answers after each question"
- * - Supports optional timer
- * - Submits the quiz and shows a result/review screen
- * - Converts backend error codes into clear plain-English messages
- */
+
+/* -------------------------------------------------------------------------- */
+/* File Overview */
+/* Quiz Attempt Page. Loads one quiz, records answers, manages timer behaviour, submits results, and shows review feedback. */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Imports */
+/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
+/* -------------------------------------------------------------------------- */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -36,9 +34,11 @@ import {
   type QuizResult,
 } from "@/src/lib/quizApi";
 
-/* --------------------------------
-   Small reusable card
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Card Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function Card({
   children,
@@ -47,6 +47,11 @@ function Card({
   children: React.ReactNode;
   className?: string;
 }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div
       className={[
@@ -60,9 +65,11 @@ function Card({
   );
 }
 
-/* --------------------------------
-   Time helper
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Format Time Helper */
+/* Formats values into readable text before they are shown in the interface. */
+/* -------------------------------------------------------------------------- */
 
 function formatTime(seconds: number) {
   const safeSeconds = Math.max(0, seconds);
@@ -72,16 +79,11 @@ function formatTime(seconds: number) {
   return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
-/* --------------------------------
-   Error helpers
 
-   These stop raw backend codes such as:
-   QUIZ_ATTEMPT_NOT_FOUND
-   AUTH_MISSING_TOKEN
-   OPENAI_QUIZ_UPSTREAM_ERROR
-
-   from being shown directly to users.
--------------------------------- */
+/* -------------------------------------------------------------------------- */
+/* Get Raw Error Message Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
 
 function getRawErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -93,6 +95,11 @@ function getRawErrorMessage(error: unknown): string {
     return "UNKNOWN_ERROR";
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Get Friendly Quiz Error Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
 
 function getFriendlyQuizError(error: unknown, fallback: string) {
   const raw = getRawErrorMessage(error).trim();
@@ -170,7 +177,6 @@ function getFriendlyQuizError(error: unknown, fallback: string) {
       break;
   }
 
-  // If the backend already sent readable text, show it.
   if (
     raw.includes(" ") &&
     !raw.startsWith("REQUEST_FAILED_") &&
@@ -182,12 +188,11 @@ function getFriendlyQuizError(error: unknown, fallback: string) {
   return fallback;
 }
 
-/* --------------------------------
-   Result calculation helper
 
-   This protects the result page if the backend response
-   is missing correctCount or scorePercent.
--------------------------------- */
+/* -------------------------------------------------------------------------- */
+/* Get Result Stats Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
 
 function getResultStats(result: QuizResult) {
   const calculatedCorrectCount = result.questions.filter(
@@ -218,15 +223,22 @@ function getResultStats(result: QuizResult) {
   };
 }
 
+/* -------------------------------------------------------------------------- */
+/* Main Page Component */
+/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
+/* -------------------------------------------------------------------------- */
+
 export default function QuizAttemptPage() {
   const params = useParams<{ attemptId: string }>();
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const searchParams = useSearchParams();
 
   const attemptId = params.attemptId;
 
-  /* --------------------------------
-     Dynamic return link
-  -------------------------------- */
 
 const fromPage = searchParams.get("from");
 
@@ -244,9 +256,11 @@ const backLabel =
       ? "Back to Progress"
       : "Back to Workspace";
 
-  /* --------------------------------
-     Main quiz state
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* State Values */
+  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
+  /* -------------------------------------------------------------------------- */
 
   const [attempt, setAttempt] = useState<QuizAttempt | null>(null);
   const [result, setResult] = useState<QuizResult | null>(null);
@@ -265,15 +279,15 @@ const backLabel =
 
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 
-  // Used to calculate total time taken.
   const startedAtRef = useRef<number>(Date.now());
 
-  // Stops the timer from auto-submitting more than once.
   const autoSubmittedRef = useRef(false);
 
-  /* --------------------------------
-     Quiz values
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Questions Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
 
   const questions = useMemo(() => {
     return attempt?.questions ?? [];
@@ -283,6 +297,11 @@ const backLabel =
 
   const isLastQuestion = currentIndex === questions.length - 1;
 
+  /* -------------------------------------------------------------------------- */
+  /* Answered Count Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
+
   const answeredCount = useMemo(() => {
     return questions.filter(
       (question) =>
@@ -291,6 +310,11 @@ const backLabel =
     ).length;
   }, [questions]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Displayed Answered Count Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
+
   const displayedAnsweredCount = useMemo(() => {
     const currentSaved =
       currentQuestion?.selectedOptionIndex !== null &&
@@ -298,7 +322,6 @@ const backLabel =
 
     const currentSelected = selectedOptionIndex !== null;
 
-    // Count the current selection immediately, even before backend save finishes.
     if (currentSelected && !currentSaved) {
       return answeredCount + 1;
     }
@@ -313,13 +336,20 @@ const backLabel =
       ? Math.round(((currentIndex + 1) / questions.length) * 100)
       : 0;
 
+  /* -------------------------------------------------------------------------- */
+  /* Get Time Taken Seconds Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
+
   const getTimeTakenSeconds = useCallback(() => {
     return Math.round((Date.now() - startedAtRef.current) / 1000);
   }, []);
 
-  /* --------------------------------
-     Load quiz attempt from backend
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Load Quiz Handler */
+  /* Loads the latest backend data and updates the page state used by the interface. */
+  /* -------------------------------------------------------------------------- */
 
   const loadQuiz = useCallback(async () => {
     setIsLoading(true);
@@ -330,7 +360,6 @@ const backLabel =
 
       setAttempt(loaded);
 
-      // If already completed, go straight to result review.
       if (loaded.completedAt) {
         setResult(loaded as QuizResult);
       }
@@ -338,7 +367,6 @@ const backLabel =
       const firstQuestion = loaded.questions[0];
       setSelectedOptionIndex(firstQuestion?.selectedOptionIndex ?? null);
 
-      // Timer starts when the page opens.
       if (loaded.timerEnabled && loaded.timeLimitSeconds && !loaded.completedAt) {
         setSecondsLeft(loaded.timeLimitSeconds);
       }
@@ -356,13 +384,20 @@ const backLabel =
     }
   }, [attemptId]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Side Effects */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     loadQuiz();
   }, [loadQuiz]);
 
-  /* --------------------------------
-     Save one answer
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Update Question Locally Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
 
   const updateQuestionLocally = useCallback(
     (questionId: string, patch: Partial<QuizQuestion>) => {
@@ -379,6 +414,11 @@ const backLabel =
     },
     []
   );
+
+  /* -------------------------------------------------------------------------- */
+  /* Save Current Answer Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
 
   const saveCurrentAnswer = useCallback(async () => {
     if (!currentQuestion) return false;
@@ -428,9 +468,11 @@ const backLabel =
     updateQuestionLocally,
   ]);
 
-  /* --------------------------------
-     Submit whole quiz
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Submit Quiz Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
 
   const handleSubmitQuiz = useCallback(async () => {
     setIsSubmitting(true);
@@ -458,9 +500,11 @@ const backLabel =
     }
   }, [attemptId, getTimeTakenSeconds]);
 
-  /* --------------------------------
-     Timer countdown
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
     if (!attempt?.timerEnabled) return;
@@ -483,9 +527,11 @@ const backLabel =
     return () => window.clearTimeout(timer);
   }, [attempt?.timerEnabled, handleSubmitQuiz, result, secondsLeft]);
 
-  /* --------------------------------
-     Navigation helpers
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Go To Next Question Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   const goToNextQuestion = useCallback(() => {
     if (isLastQuestion) return;
@@ -497,6 +543,11 @@ const backLabel =
     setSelectedOptionIndex(nextQuestion?.selectedOptionIndex ?? null);
     setAnswerMessage("");
   }, [currentIndex, isLastQuestion, questions]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Previous Question Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   const handlePreviousQuestion = useCallback(() => {
     if (currentIndex === 0) return;
@@ -515,10 +566,14 @@ const backLabel =
     currentQuestion?.isCorrect !== undefined &&
     currentQuestion?.selectedOptionIndex === selectedOptionIndex;
 
+  /* -------------------------------------------------------------------------- */
+  /* Handle Primary Action Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
+
   const handlePrimaryAction = useCallback(async () => {
     if (!currentQuestion) return;
 
-    // after_each mode: first click checks answer, second click continues.
     if (attempt?.revealMode === "after_each") {
       if (!currentQuestionHasRevealedAnswer) {
         const saved = await saveCurrentAnswer();
@@ -539,7 +594,6 @@ const backLabel =
       return;
     }
 
-    // end mode: save and move on immediately.
     const saved = await saveCurrentAnswer();
 
     if (!saved) return;
@@ -559,9 +613,11 @@ const backLabel =
     saveCurrentAnswer,
   ]);
 
-  /* --------------------------------
-     Loading / error states
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Conditional UI State */
+  /* Shows a focused loading, error, empty, or success view before the main interface is displayed. */
+  /* -------------------------------------------------------------------------- */
 
   if (isLoading) {
     return (
@@ -574,9 +630,27 @@ const backLabel =
     );
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Conditional UI State */
+  /* Shows a focused loading, error, empty, or success view before the main interface is displayed. */
+  /* -------------------------------------------------------------------------- */
+
   if (error && !attempt) {
+    /* -------------------------------------------------------------------------- */
+    /* Quiz Page Shell */
+    /* Organises quiz loading, question navigation, answer controls, timer, and result review. */
+    /* -------------------------------------------------------------------------- */
+
     return (
       <div className="space-y-6">
+        {/*
+          Quiz Progress Card
+          Shows quiz status, score context, and timer information for the current attempt.
+        */}
+        {/*
+          Quiz Progress and Timer Card
+          Summarises progress through the quiz and displays timing information.
+        */}
         <Card>
           <div className="text-lg font-semibold text-red-600">
             Could not load quiz
@@ -597,7 +671,22 @@ const backLabel =
     );
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Conditional UI State */
+  /* Shows a focused loading, error, empty, or success view before the main interface is displayed. */
+  /* -------------------------------------------------------------------------- */
+
   if (!attempt || questions.length === 0 || !currentQuestion) {
+    /* -------------------------------------------------------------------------- */
+    /* Current Question Card */
+    /* Displays the active question and answer choices while the quiz is in progress. */
+    /* -------------------------------------------------------------------------- */
+
+    /* -------------------------------------------------------------------------- */
+    /* Question and Answer Card */
+    /* Shows the current question and answer options during the attempt. */
+    /* -------------------------------------------------------------------------- */
+
     return (
       <Card>
         <div className="text-lg font-semibold">No quiz questions found.</div>
@@ -617,9 +706,6 @@ const backLabel =
     );
   }
 
-  /* --------------------------------
-     Result / review screen
-  -------------------------------- */
 
   if (result) {
     const resultStats = getResultStats(result);
@@ -650,6 +736,10 @@ const backLabel =
           </div>
         </div>
 
+        {/*
+          Quiz Result Summary Cards
+          Shows score, correct answers, total questions, and time taken after submission.
+        */}
         <div className="grid gap-4 md:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="text-sm font-medium text-slate-500">Score</div>
@@ -682,6 +772,10 @@ const backLabel =
           </div>
         </div>
 
+        {/*
+          Quiz Review Question List
+          Lists each submitted question with selected answers, correct answers, and explanations.
+        */}
         <div className="space-y-4">
           {result.questions.map((question, index) => (
             <div
@@ -767,6 +861,10 @@ const backLabel =
           ))}
         </div>
 
+        {/*
+          Quiz Result Action Panel
+          Lets the user return to the previous page or start another quiz.
+        */}
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -802,9 +900,6 @@ const backLabel =
     );
   }
 
-  /* --------------------------------
-     Active quiz screen
-  -------------------------------- */
 
   const disableAnswerButtons =
     isSavingAnswer || isSubmitting || currentQuestionHasRevealedAnswer;
@@ -816,8 +911,17 @@ const backLabel =
         ? "Submit Quiz"
         : "Save & Next";
 
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="space-y-6">
+      {/*
+        Quiz Header Panel
+        Shows whether the quiz is active or complete, the quiz title, and the exit/back action.
+      */}
       <div className="overflow-hidden rounded-3xl border border-blue-200 bg-linear-to-r from-blue-600 via-blue-600 to-indigo-700 p-6 text-white shadow-sm">
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           <div>
@@ -851,12 +955,20 @@ const backLabel =
         </div>
       </div>
 
+      {/*
+        Quiz Inline Error Banner
+        Shows recoverable quiz errors without replacing the whole page.
+      */}
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-900 dark:border-red-900/50 dark:bg-red-950 dark:text-red-100">
           {error}
         </div>
       )}
 
+      {/*
+        Active Question Card
+        Contains the current question, answer options, feedback, and explanation area.
+      */}
       <Card>
         <div className="mb-5">
           <div className="flex items-center justify-between text-sm text-slate-500">
@@ -892,6 +1004,10 @@ const backLabel =
             </h2>
 
             <div className="mt-5 space-y-3">
+              {/*
+                Active Answer Options
+                Builds the selectable answer buttons for the current multiple-choice question.
+              */}
               {currentQuestion.options.map((option, optionIndex) => {
                 const active = selectedOptionIndex === optionIndex;
                 const isCorrect =
@@ -925,12 +1041,20 @@ const backLabel =
               })}
             </div>
 
+            {/*
+              Answer Save Message
+              Confirms whether the current answer was saved or needs another attempt.
+            */}
             {answerMessage && (
               <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 {answerMessage}
               </div>
             )}
 
+            {/*
+              Immediate Answer Feedback
+              Shows correct/not-quite feedback when reveal mode is after each question.
+            */}
             {currentQuestionHasRevealedAnswer && (
               <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 <div className="font-semibold">
@@ -948,6 +1072,10 @@ const backLabel =
         </div>
       </Card>
 
+      {/*
+        Quiz Navigation Controls
+        Moves backwards, saves answers, advances questions, or submits the quiz.
+      */}
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
         <button
           type="button"

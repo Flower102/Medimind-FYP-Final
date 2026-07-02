@@ -15,6 +15,13 @@
 # Next.js proxy forwards that to:
 #   GET /progress/summary
 
+# ---------------------------------------------------------------------
+# Imports and Progress Router Setup
+# ---------------------------------------------------------------------
+# This section imports models, authentication, and response schemas for progress summaries.
+# The router exposes dashboard and progress-page data through one summary endpoint.
+# ---------------------------------------------------------------------
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -31,10 +38,24 @@ from . import models
 router = APIRouter(prefix="/progress", tags=["Progress"])
 
 
+# ---------------------------------------------------------------------
+# ProgressPointOut Schema or Data Model
+# ---------------------------------------------------------------------
+# This section defines the ProgressPointOut data shape used by the API.
+# It helps validate input and return predictable responses to the frontend.
+# ---------------------------------------------------------------------
+
 class ProgressPointOut(BaseModel):
     label: str
     value: int
 
+
+# ---------------------------------------------------------------------
+# RecentQuizOut Schema or Data Model
+# ---------------------------------------------------------------------
+# This section defines the RecentQuizOut data shape used by the API.
+# It helps validate input and return predictable responses to the frontend.
+# ---------------------------------------------------------------------
 
 class RecentQuizOut(BaseModel):
     id: str
@@ -46,17 +67,38 @@ class RecentQuizOut(BaseModel):
     completed_at: Optional[datetime] = None
 
 
+# ---------------------------------------------------------------------
+# LearningGoalOut Schema or Data Model
+# ---------------------------------------------------------------------
+# This section defines the LearningGoalOut data shape used by the API.
+# It helps validate input and return predictable responses to the frontend.
+# ---------------------------------------------------------------------
+
 class LearningGoalOut(BaseModel):
     title: str
     current: int
     target: int
 
 
+# ---------------------------------------------------------------------
+# ReminderNoteOut Schema or Data Model
+# ---------------------------------------------------------------------
+# This section defines the ReminderNoteOut data shape used by the API.
+# It helps validate input and return predictable responses to the frontend.
+# ---------------------------------------------------------------------
+
 class ReminderNoteOut(BaseModel):
     id: Optional[str] = None
     title: Optional[str] = None
     reason: str
 
+
+# ---------------------------------------------------------------------
+# ProgressSummaryOut Schema or Data Model
+# ---------------------------------------------------------------------
+# This section defines the ProgressSummaryOut data shape used by the API.
+# It helps validate input and return predictable responses to the frontend.
+# ---------------------------------------------------------------------
 
 class ProgressSummaryOut(BaseModel):
     total_notes: int
@@ -81,6 +123,13 @@ class ProgressSummaryOut(BaseModel):
     reminder_note: Optional[ReminderNoteOut] = None
 
 
+# ---------------------------------------------------------------------
+# Date Label Helper
+# ---------------------------------------------------------------------
+# This helper turns dates into short chart labels.
+# It keeps progress graphs readable on the dashboard and progress page.
+# ---------------------------------------------------------------------
+
 def format_date_label(value: datetime | None) -> str:
     if value is None:
         return "Unknown"
@@ -88,12 +137,26 @@ def format_date_label(value: datetime | None) -> str:
     return value.strftime("%b %d")
 
 
+# ---------------------------------------------------------------------
+# Average Calculation Helper
+# ---------------------------------------------------------------------
+# This helper calculates rounded averages without dividing by zero.
+# It returns 0 when there is no data yet.
+# ---------------------------------------------------------------------
+
 def safe_average(values: list[int]) -> int:
     if not values:
         return 0
 
     return round(sum(values) / len(values))
 
+
+# ---------------------------------------------------------------------
+# Note Title Helper
+# ---------------------------------------------------------------------
+# This helper chooses a readable note title for reminders and suggestions.
+# It falls back safely when a note is missing or untitled.
+# ---------------------------------------------------------------------
 
 def get_note_title(note: models.Note | None) -> str:
     if note is None:
@@ -104,6 +167,13 @@ def get_note_title(note: models.Note | None) -> str:
 
     return "Untitled note"
 
+
+# ---------------------------------------------------------------------
+# Review Note Selector
+# ---------------------------------------------------------------------
+# This helper chooses the best note for the user to review next.
+# It prioritises favourites, low confidence notes, and recent notes.
+# ---------------------------------------------------------------------
 
 def choose_review_note(notes: list[models.Note]) -> models.Note | None:
     if not notes:
@@ -135,6 +205,13 @@ def choose_review_note(notes: list[models.Note]) -> models.Note | None:
         reverse=True,
     )[0]
 
+
+# ---------------------------------------------------------------------
+# Progress Insight Builder
+# ---------------------------------------------------------------------
+# This helper creates a plain-English learning insight from user activity.
+# It explains what the progress numbers mean in a helpful way.
+# ---------------------------------------------------------------------
 
 def build_progress_insight(
     total_notes: int,
@@ -169,6 +246,13 @@ def build_progress_insight(
 
     return "Keep going. Creating notes, reviewing them, and completing quizzes will help you see your learning improve over time."
 
+
+# ---------------------------------------------------------------------
+# Motivation Message Builder
+# ---------------------------------------------------------------------
+# This helper creates an encouraging message based on progress data.
+# It gives the dashboard a supportive learning tone.
+# ---------------------------------------------------------------------
 
 def build_motivation_message(
     total_notes: int,
@@ -218,6 +302,13 @@ def build_motivation_message(
     )
 
 
+# ---------------------------------------------------------------------
+# Suggested Next Step Builder
+# ---------------------------------------------------------------------
+# This helper recommends the next useful learning action.
+# It adapts the suggestion based on notes, quizzes, confidence, and scores.
+# ---------------------------------------------------------------------
+
 def build_suggested_next_step(
     total_notes: int,
     completed_quizzes: int,
@@ -244,6 +335,13 @@ def build_suggested_next_step(
 
     return f"Spend a few minutes reviewing {review_title}, then continue with another quiz."
 
+
+# ---------------------------------------------------------------------
+# Gentle Reminder Builder
+# ---------------------------------------------------------------------
+# This helper creates a small reminder for the dashboard.
+# It encourages review without making the user feel pressured.
+# ---------------------------------------------------------------------
 
 def build_gentle_reminder(
     total_notes: int,
@@ -273,6 +371,13 @@ def build_gentle_reminder(
     return "A short review session today can help you remember what you learned."
 
 
+# ---------------------------------------------------------------------
+# Reminder Note Builder
+# ---------------------------------------------------------------------
+# This helper packages the selected review note for the frontend.
+# It gives the reminder panel a specific note to link back to.
+# ---------------------------------------------------------------------
+
 def build_reminder_note(notes: list[models.Note]) -> Optional[ReminderNoteOut]:
     review_note = choose_review_note(notes)
 
@@ -285,6 +390,13 @@ def build_reminder_note(notes: list[models.Note]) -> Optional[ReminderNoteOut]:
         reason="Suggested review item based on your saved notes, confidence ratings, and favourites.",
     )
 
+
+# ---------------------------------------------------------------------
+# Progress Summary Route
+# ---------------------------------------------------------------------
+# This route gathers notes, chats, quizzes, and confidence data for the user.
+# It returns one complete summary used by Dashboard and Progress pages.
+# ---------------------------------------------------------------------
 
 @router.get("/summary", response_model=ProgressSummaryOut)
 def get_progress_summary(

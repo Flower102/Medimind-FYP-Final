@@ -1,5 +1,11 @@
 # /backend/app/settings.py
 
+# ---------------------------------------------------------------------
+# Imports and Environment File Location
+# ---------------------------------------------------------------------
+# This section locates the backend .env file and imports Pydantic settings tools.
+# Settings are loaded from environment variables so local and deployed values can differ.
+# ---------------------------------------------------------------------
 from pathlib import Path as FilePath
 
 from pydantic import model_validator
@@ -10,6 +16,12 @@ BASE_DIR = FilePath(__file__).resolve().parent.parent
 ENV_PATH = BASE_DIR / ".env"
 
 
+# ---------------------------------------------------------------------
+# Application Settings
+# ---------------------------------------------------------------------
+# This class defines all backend configuration values used across the app.
+# Defaults support local development, while Render/Vercel can override them using env vars.
+# ---------------------------------------------------------------------
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=str(ENV_PATH),
@@ -73,6 +85,12 @@ class Settings(BaseSettings):
     SUPABASE_AVATAR_BUCKET: str = "avatar"
 
 
+# ---------------------------------------------------------------------
+# Production Safety Validation
+# ---------------------------------------------------------------------
+# This validator normalises settings and applies safer defaults in production.
+# It prevents insecure email/cookie settings from accidentally being used after deployment.
+# ---------------------------------------------------------------------
 @model_validator(mode="after")
 def _normalise_and_validate(self):
     self.ENV = (self.ENV or "dev").lower().strip()
@@ -95,4 +113,10 @@ def _normalise_and_validate(self):
     return self
 
 
+# ---------------------------------------------------------------------
+# Shared Settings Instance
+# ---------------------------------------------------------------------
+# This object is imported by the rest of the backend to read configuration values.
+# Creating it once keeps environment loading centralised in this file.
+# ---------------------------------------------------------------------
 settings = Settings()

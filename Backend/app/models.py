@@ -15,6 +15,12 @@ from sqlalchemy.orm import relationship
 from .db import Base
 
 
+# ---------------------------------------------------------------------
+# User Table Model
+# ---------------------------------------------------------------------
+# This model stores account details, login information, and profile fields.
+# Other learning data links back to this table through the user's id.
+# ---------------------------------------------------------------------
 class User(Base):
     __tablename__ = "users"
 
@@ -66,6 +72,12 @@ class User(Base):
     )
 
 
+# ---------------------------------------------------------------------
+# Refresh Token Table Model
+# ---------------------------------------------------------------------
+# This model stores refresh-token records used for sessions and sign-out-all.
+# Revoked and replaced tokens help protect the account when sessions rotate.
+# ---------------------------------------------------------------------
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
 
@@ -88,6 +100,12 @@ class RefreshToken(Base):
     user = relationship("User", back_populates="refresh_tokens")
 
 
+# ---------------------------------------------------------------------
+# Note Table Model
+# ---------------------------------------------------------------------
+# This model stores saved learning notes, reflections, confidence ratings, and favourites.
+# Notes are the main learning records used by quizzes, progress, and chat sessions.
+# ---------------------------------------------------------------------
 class Note(Base):
     __tablename__ = "notes"
 
@@ -123,6 +141,12 @@ class Note(Base):
     )
 
 
+# ---------------------------------------------------------------------
+# Chat Session Table Model
+# ---------------------------------------------------------------------
+# This model stores one saved chatbot conversation and its source page.
+# It links chats to users and optionally to a Learning Workspace note.
+# ---------------------------------------------------------------------
 class ChatSession(Base):
     __tablename__ = "chat_sessions"
 
@@ -188,6 +212,12 @@ class ChatSession(Base):
     )
 
 
+# ---------------------------------------------------------------------
+# Chat Message Table Model
+# ---------------------------------------------------------------------
+# This model stores individual user and assistant messages inside a chat session.
+# Deleting a chat session also deletes its messages through cascade rules.
+# ---------------------------------------------------------------------
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
@@ -208,6 +238,12 @@ class ChatMessage(Base):
     session = relationship("ChatSession", back_populates="messages")
 
 
+# ---------------------------------------------------------------------
+# Quiz Attempt Table Model
+# ---------------------------------------------------------------------
+# This model stores one generated quiz attempt for a saved note.
+# It tracks timing, score, completion state, and the related quiz questions.
+# ---------------------------------------------------------------------
 class QuizAttempt(Base):
     __tablename__ = "quiz_attempts"
 
@@ -260,6 +296,12 @@ class QuizAttempt(Base):
     )
 
 
+# ---------------------------------------------------------------------
+# Quiz Question Table Model
+# ---------------------------------------------------------------------
+# This model stores each multiple-choice question inside a quiz attempt.
+# It keeps the selected answer and correctness so quiz results can be reviewed later.
+# ---------------------------------------------------------------------
 class QuizQuestion(Base):
     __tablename__ = "quiz_questions"
 

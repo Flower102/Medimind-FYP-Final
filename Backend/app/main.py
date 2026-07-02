@@ -1,4 +1,11 @@
 # app/main.py
+# ---------------------------------------------------------------------
+# Imports, App Setup, and Router Registration
+# ---------------------------------------------------------------------
+# This section imports FastAPI, authentication, database, OAuth, routers, and storage tools.
+# It creates the main backend app and connects shared services used across the project.
+# ---------------------------------------------------------------------
+
 from fastapi import FastAPI, Depends, HTTPException, Request, Response, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -167,6 +174,13 @@ STATUS_FALLBACK_MESSAGES = {
 }
 
 
+# ---------------------------------------------------------------------
+# Readable Error Builder
+# ---------------------------------------------------------------------
+# This helper converts raw backend errors into clear error objects.
+# It keeps API responses useful for both frontend display and debugging.
+# ---------------------------------------------------------------------
+
 def build_error_detail(status_code: int, detail):
     """-
     Converts every backend error into a clean structure:
@@ -209,6 +223,13 @@ def build_error_detail(status_code: int, detail):
     }
 
 
+# ---------------------------------------------------------------------
+# Controlled API Error Helper
+# ---------------------------------------------------------------------
+# This helper raises known backend errors using shared error codes and messages.
+# It avoids repeating the same HTTPException structure across routes.
+# ---------------------------------------------------------------------
+
 def api_error(code: str, http_status: int):
     """
     Use this when you want to raise a controlled backend error.
@@ -229,6 +250,13 @@ def api_error(code: str, http_status: int):
     )
 
 
+# ---------------------------------------------------------------------
+# HTTP Error Handler
+# ---------------------------------------------------------------------
+# This handler formats expected FastAPI errors before sending them to the frontend.
+# It makes older and newer error styles return the same clean shape.
+# ---------------------------------------------------------------------
+
 @app.exception_handler(StarletteHTTPException)
 async def readable_http_exception_handler(request: Request, exc: StarletteHTTPException):
     """
@@ -243,6 +271,13 @@ async def readable_http_exception_handler(request: Request, exc: StarletteHTTPEx
         },
     )
 
+
+# ---------------------------------------------------------------------
+# Validation Error Handler
+# ---------------------------------------------------------------------
+# This handler formats Pydantic validation errors into a simple message.
+# It prevents technical validation details from confusing normal users.
+# ---------------------------------------------------------------------
 
 @app.exception_handler(RequestValidationError)
 async def readable_validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -265,6 +300,13 @@ async def readable_validation_exception_handler(request: Request, exc: RequestVa
     )
 
 
+# ---------------------------------------------------------------------
+# Rate Limit Error Handler
+# ---------------------------------------------------------------------
+# This handler returns a friendly message when users send too many requests.
+# It supports safer login, verification, and reset-code flows.
+# ---------------------------------------------------------------------
+
 async def readable_rate_limit_handler(request: Request, exc: RateLimitExceeded):
     """
     Handles too many requests.
@@ -284,6 +326,13 @@ async def readable_rate_limit_handler(request: Request, exc: RateLimitExceeded):
 
 app.add_exception_handler(RateLimitExceeded, readable_rate_limit_handler)
 
+
+# ---------------------------------------------------------------------
+# Unexpected Server Error Handler
+# ---------------------------------------------------------------------
+# This handler catches unexpected backend errors and returns a safe message.
+# In development it can also expose the error type for debugging.
+# ---------------------------------------------------------------------
 
 @app.exception_handler(Exception)
 async def readable_server_error_handler(request: Request, exc: Exception):
@@ -348,14 +397,35 @@ app.add_middleware(
    
 )
 
+# ---------------------------------------------------------------------
+# Health Check Route
+# ---------------------------------------------------------------------
+# This route confirms the backend is running.
+# Hosting services can call it to check that the web service is alive.
+# ---------------------------------------------------------------------
+
 @app.get("/")
 def health():
     return {"status": "ok"}
+
+# ---------------------------------------------------------------------
+# Short Error Wrapper
+# ---------------------------------------------------------------------
+# This small wrapper raises shared API errors with less repeated code.
+# It is used by authentication helpers in this file.
+# ---------------------------------------------------------------------
 
 def err(code: str, http_status: int):
     api_error(code, http_status)
 
 bearer = HTTPBearer(auto_error=False)
+
+# ---------------------------------------------------------------------
+# Current User Lookup
+# ---------------------------------------------------------------------
+# This function validates the signed-in user and loads their account.
+# Protected routes depend on it to keep private data account-specific.
+# ---------------------------------------------------------------------
 
 def get_current_user(
     request: Request,
@@ -387,6 +457,13 @@ def get_current_user(
 
     return user
 
+# ---------------------------------------------------------------------
+# Authentication Cookie Writer
+# ---------------------------------------------------------------------
+# This helper stores access and refresh tokens in httpOnly cookies.
+# It keeps cookie settings consistent after sign-in, refresh, and Google login.
+# ---------------------------------------------------------------------
+
 def set_auth_cookies(res: Response, access_token: str, refresh_token: str):
     # Access cookie: sent to all routes
     res.set_cookie(
@@ -410,10 +487,24 @@ def set_auth_cookies(res: Response, access_token: str, refresh_token: str):
         path="/auth",
     )
 
+# ---------------------------------------------------------------------
+# Authentication Cookie Clearer
+# ---------------------------------------------------------------------
+# This helper removes authentication cookies during sign-out or account deletion.
+# It uses the same cookie paths as the setter so deletion works correctly.
+# ---------------------------------------------------------------------
+
 def clear_auth_cookies(res: Response):
     # Must delete with the SAME path you used when setting
     res.delete_cookie(settings.AUTH_COOKIE_ACCESS, path="/")
     res.delete_cookie(settings.AUTH_COOKIE_REFRESH, path="/auth")
+
+# ---------------------------------------------------------------------
+# Refresh Token Revocation
+# ---------------------------------------------------------------------
+# This helper revokes all active refresh tokens for a user.
+# It supports sign-out-all, password reset, and secure account deletion.
+# ---------------------------------------------------------------------
 
 def revoke_all_refresh_tokens(db: Session, user_id: int, now: datetime):
     db.execute(
@@ -421,6 +512,13 @@ def revoke_all_refresh_tokens(db: Session, user_id: int, now: datetime):
         .where(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
         .values(revoked_at=now)
     )
+
+# ---------------------------------------------------------------------
+# Signup Route
+# ---------------------------------------------------------------------
+# This route creates a new email/password account and sends a verification code.
+# It also resends the code when an unverified account already exists.
+# ---------------------------------------------------------------------
 
 @app.post("/auth/signup", response_model=OkOut)
 @limiter.limit("5/minute")
@@ -476,6 +574,13 @@ def signup(payload: SignUpIn, request: Request, background_tasks: BackgroundTask
     background_tasks.add_task(send_verification_email, user.email, code)
     return OkOut()
 
+# ---------------------------------------------------------------------
+# Email Verification Route
+# ---------------------------------------------------------------------
+# This route checks the six-digit verification code and marks the account as verified.
+# It also protects the flow with expiry and attempt limits.
+# ---------------------------------------------------------------------
+
 @app.post("/auth/verify", response_model=OkOut)
 @limiter.limit("10/minute")
 def verify_email(payload: VerifyEmail, request: Request, db: Session = Depends(get_db)):
@@ -510,6 +615,13 @@ def verify_email(payload: VerifyEmail, request: Request, db: Session = Depends(g
 
     return OkOut()
 
+# ---------------------------------------------------------------------
+# Resend Verification Route
+# ---------------------------------------------------------------------
+# This route generates a fresh verification code for unverified accounts.
+# It avoids leaking whether an email exists when no matching account is found.
+# ---------------------------------------------------------------------
+
 @app.post("/auth/resend-verification", response_model=OkOut)
 @limiter.limit("4/minute")
 def resend_verification(payload: ResendVerify, request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
@@ -530,6 +642,13 @@ def resend_verification(payload: ResendVerify, request: Request, background_task
 
     background_tasks.add_task(send_verification_email, email, code)
     return OkOut()
+
+# ---------------------------------------------------------------------
+# Email Sign-in Route
+# ---------------------------------------------------------------------
+# This route checks email/password credentials and creates login cookies.
+# It also handles verification checks, failed attempts, and temporary lockout.
+# ---------------------------------------------------------------------
 
 @app.post("/auth/signin", response_model=UserOut)
 @limiter.limit("10/minute")
@@ -624,6 +743,13 @@ def signin(payload: SignInIn, request: Request, res: Response, db: Session = Dep
     )
 
 
+# ---------------------------------------------------------------------
+# Google Login Start Route
+# ---------------------------------------------------------------------
+# This route starts the Google OAuth flow.
+# It redirects the user to Google so they can choose an account securely.
+# ---------------------------------------------------------------------
+
 @app.get("/auth/google/login")
 async def google_login(request: Request):
     """
@@ -647,6 +773,13 @@ async def google_login(request: Request):
         settings.GOOGLE_REDIRECT_URI,
     )
 
+
+# ---------------------------------------------------------------------
+# Google Login Callback Route
+# ---------------------------------------------------------------------
+# This route handles the response from Google after account selection.
+# It creates or links the user account, then signs the user into MediMind.
+# ---------------------------------------------------------------------
 
 @app.get("/auth/google/callback")
 async def google_callback(
@@ -791,6 +924,13 @@ async def google_callback(
 
     return redirect_response
 
+# ---------------------------------------------------------------------
+# Session Refresh Route
+# ---------------------------------------------------------------------
+# This route rotates refresh tokens and creates a new access token.
+# It helps keep sessions active while detecting unsafe refresh-token reuse.
+# ---------------------------------------------------------------------
+
 @app.post("/auth/refresh", response_model=OkOut)
 @limiter.limit("30/minute")
 def refresh(request: Request, res: Response, db: Session = Depends(get_db)):
@@ -851,6 +991,13 @@ def refresh(request: Request, res: Response, db: Session = Depends(get_db)):
     return OkOut()
 
 
+# ---------------------------------------------------------------------
+# Single Device Sign-out Route
+# ---------------------------------------------------------------------
+# This route revokes the current refresh token and clears auth cookies.
+# It signs the user out from the current browser session only.
+# ---------------------------------------------------------------------
+
 @app.post("/auth/signout", response_model=OkOut)
 def signout(request: Request, res: Response, db: Session = Depends(get_db)):
     token = request.cookies.get(settings.AUTH_COOKIE_REFRESH)
@@ -869,6 +1016,13 @@ def signout(request: Request, res: Response, db: Session = Depends(get_db)):
     return OkOut()
 
 # ✅ premium: sign out of all devices (revokes ALL refresh tokens)
+# ---------------------------------------------------------------------
+# All Devices Sign-out Route
+# ---------------------------------------------------------------------
+# This route revokes every refresh token for the current user.
+# It is used when the user wants to end all active sessions.
+# ---------------------------------------------------------------------
+
 @app.post("/auth/signout-all", response_model=OkOut)
 def signout_all(
     request: Request,
@@ -882,6 +1036,13 @@ def signout_all(
     clear_auth_cookies(res)
     return OkOut()
 
+
+# ---------------------------------------------------------------------
+# Forgot Password Route
+# ---------------------------------------------------------------------
+# This route creates a reset code and sends it to the user email.
+# It returns a neutral success response so account existence is not leaked.
+# ---------------------------------------------------------------------
 
 @app.post("/auth/forgot-password", response_model=OkOut)
 @limiter.limit("4/minute")
@@ -911,6 +1072,13 @@ def forgot_password(
 
     return OkOut()
 
+
+# ---------------------------------------------------------------------
+# Reset Code Verification Route
+# ---------------------------------------------------------------------
+# This route checks whether a password-reset code is valid and not expired.
+# It lets the frontend confirm the code before accepting a new password.
+# ---------------------------------------------------------------------
 
 @app.post("/auth/verify-reset-code", response_model=OkOut)
 @limiter.limit("10/minute")
@@ -942,6 +1110,13 @@ def verify_reset_code(
 
     return OkOut()
 
+
+# ---------------------------------------------------------------------
+# Reset Password Route
+# ---------------------------------------------------------------------
+# This route validates the reset code and saves the new password hash.
+# It clears reset data and revokes active sessions after the password changes.
+# ---------------------------------------------------------------------
 
 @app.post("/auth/reset-password", response_model=OkOut)
 @limiter.limit("6/minute")
@@ -1006,6 +1181,13 @@ def reset_password(
 
     return OkOut()
 
+# ---------------------------------------------------------------------
+# Current Profile Route
+# ---------------------------------------------------------------------
+# This route returns profile details for the signed-in user.
+# It is used by Settings and account display areas in the frontend.
+# ---------------------------------------------------------------------
+
 @app.get("/auth/me", response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)):
     """
@@ -1025,6 +1207,13 @@ def me(current_user: User = Depends(get_current_user)):
         avatar_url=current_user.avatar_url,
     )
 
+
+# ---------------------------------------------------------------------
+# Basic Profile Update Route
+# ---------------------------------------------------------------------
+# This route updates editable profile fields for the signed-in user.
+# It keeps names and display names in sync with the database.
+# ---------------------------------------------------------------------
 
 @app.patch("/auth/me", response_model=UserOut)
 def update_me(
@@ -1053,6 +1242,13 @@ def update_me(
         avatar_url=current_user.avatar_url,
     )
 
+
+# ---------------------------------------------------------------------
+# Change Password Route
+# ---------------------------------------------------------------------
+# This route verifies the current password and saves a new password hash.
+# It applies the same password rules used during signup.
+# ---------------------------------------------------------------------
 
 @app.post("/auth/change-password", response_model=OkOut)
 def change_password(
@@ -1099,6 +1295,13 @@ def change_password(
     return OkOut()
 
 
+
+# ---------------------------------------------------------------------
+# Extended Profile Update Route
+# ---------------------------------------------------------------------
+# This route updates profile fields including username when available.
+# It checks username uniqueness before saving changes.
+# ---------------------------------------------------------------------
 
 @app.patch("/auth/profile", response_model=UserOut)
 def update_profile(
@@ -1153,6 +1356,13 @@ def update_profile(
         display_name=current_user.display_name,
         avatar_url=current_user.avatar_url,
     )
+
+# ---------------------------------------------------------------------
+# Avatar Upload Route
+# ---------------------------------------------------------------------
+# This route validates and uploads a profile picture to Supabase Storage.
+# It saves the public avatar URL back onto the user account.
+# ---------------------------------------------------------------------
 
 @app.post("/auth/avatar", response_model=UserOut)
 async def upload_avatar(
@@ -1224,6 +1434,13 @@ async def upload_avatar(
 
     return current_user
 
+# ---------------------------------------------------------------------
+# Delete Account Route
+# ---------------------------------------------------------------------
+# This route permanently deletes the signed-in user and related learning data.
+# It requires DELETE confirmation and checks passwords for local accounts.
+# ---------------------------------------------------------------------
+
 @app.delete("/auth/me", response_model=OkOut)
 def delete_my_account(
     payload: DeleteAccountIn,
@@ -1287,7 +1504,12 @@ def delete_my_account(
     return OkOut()
 
 
-
+# ---------------------------------------------------------------------
+# Protected Test Route
+# ---------------------------------------------------------------------
+# This route confirms that authentication is working.
+# It only returns success when get_current_user validates the session.
+# ---------------------------------------------------------------------
 
 @app.get("/protected", response_model=OkOut)
 def protected_route(current_user: User = Depends(get_current_user)):

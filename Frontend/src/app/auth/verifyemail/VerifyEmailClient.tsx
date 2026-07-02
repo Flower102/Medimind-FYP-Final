@@ -1,18 +1,16 @@
-// frontend/src/app/auth/verifyemail/page.tsx
 
 "use client";
 
-/**
- * Verify Email page.
- *
- * This page is normally opened after signup:
- *   /auth/verifyemail?email=user@example.com
- *
- * It:
- * - Verifies the 6-digit email code
- * - Resends a new verification code
- * - Converts backend error codes into plain English messages
- */
+
+/* -------------------------------------------------------------------------- */
+/* File Overview */
+/* Email Verification Page. Verifies the six-digit email code after signup and lets users request a new verification code when needed. */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Imports */
+/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
+/* -------------------------------------------------------------------------- */
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -20,11 +18,18 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { apiFetch, ApiError } from "@/src/lib/apiFetch";
 
+/* -------------------------------------------------------------------------- */
+/* Type Definitions */
+/* Defines the data shapes used for props, API responses, form values, and page state. */
+/* -------------------------------------------------------------------------- */
+
 type SuccessMessage = null | "RESENT_OK" | "VERIFIED_OK";
 
-/**
- * Converts backend verification error codes into clear user messages.
- */
+/* -------------------------------------------------------------------------- */
+/* Map Verify Error To Message Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function mapVerifyErrorToMessage(code: string) {
   switch (code) {
     case "NETWORK_ERROR":
@@ -62,9 +67,11 @@ function mapVerifyErrorToMessage(code: string) {
   }
 }
 
-/**
- * Gets the best available error code/message from an unknown error.
- */
+/* -------------------------------------------------------------------------- */
+/* Get Error Code Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
+
 function getErrorCode(error: unknown) {
   if (error instanceof ApiError) return error.code;
   if (error instanceof Error) return error.message;
@@ -72,42 +79,58 @@ function getErrorCode(error: unknown) {
   return "UNKNOWN_ERROR";
 }
 
+/* -------------------------------------------------------------------------- */
+/* Main Page Component */
+/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
+/* -------------------------------------------------------------------------- */
+
 export default function VerifyEmailPage() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const router = useRouter();
   const params = useSearchParams();
 
-  // Email passed from signup page.
   const emailFromQuery = (params.get("email") ?? "").trim().toLowerCase();
 
-  // Form state.
+  /* -------------------------------------------------------------------------- */
+  /* State Values */
+  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
+  /* -------------------------------------------------------------------------- */
+
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Feedback state.
   const [message, setMessage] = useState<SuccessMessage>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Resend button state.
   const [isResending, setIsResending] = useState(false);
 
-  /**
-   * Frontend email check.
-   * Backend still does the final check.
-   */
+  /* -------------------------------------------------------------------------- */
+  /* Email Looks Valid Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
+
   const emailLooksValid = useMemo(() => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailFromQuery);
   }, [emailFromQuery]);
 
-  /**
-   * Code must be exactly 6 digits.
-   */
+  /* -------------------------------------------------------------------------- */
+  /* Code Looks Valid Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
+
   const codeLooksValid = useMemo(() => /^\d{6}$/.test(code), [code]);
 
   const codeComplete = code.length === 6;
 
-  /**
-   * Auto-hide success messages after 5 seconds.
-   */
+  /* -------------------------------------------------------------------------- */
+  /* Side Effects */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     if (!message) return;
 
@@ -116,10 +139,11 @@ export default function VerifyEmailPage() {
     return () => window.clearTimeout(timer);
   }, [message]);
 
-  /**
-   * Auto-hide errors after 7 seconds.
-   * Errors also clear when the user edits the code.
-   */
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     if (!error) return;
 
@@ -128,9 +152,6 @@ export default function VerifyEmailPage() {
     return () => window.clearTimeout(timer);
   }, [error]);
 
-  /**
-   * Verifies the code with FastAPI.
-   */
   const onVerify = async () => {
     setMessage(null);
     setError(null);
@@ -171,9 +192,6 @@ export default function VerifyEmailPage() {
     }
   };
 
-  /**
-   * Requests a new verification code.
-   */
   const onResend = async () => {
     setMessage(null);
     setError(null);
@@ -207,10 +225,19 @@ export default function VerifyEmailPage() {
 
   const isVerifyDisabled = busy || !codeLooksValid || !emailLooksValid;
 
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Verify Email Page Shell */
+  /* Wraps the verification form and guidance text in one focused page layout. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6 transition-colors dark:bg-slate-950">
       <div className="w-full max-w-md space-y-8">
-        {/* Brand header */}
         <div className="text-center">
           <div className="text-3xl font-semibold text-blue-600">
             MediMind Lite
@@ -221,7 +248,6 @@ export default function VerifyEmailPage() {
           </p>
         </div>
 
-        {/* Progress indicator */}
         <div className="space-y-3">
           <div className="flex items-center justify-between text-sm text-gray-500 dark:text-slate-400">
             <span>Step 2 of 2</span>
@@ -233,9 +259,7 @@ export default function VerifyEmailPage() {
           </div>
         </div>
 
-        {/* Main card */}
         <div className="space-y-6 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          {/* Mail icon + heading */}
           <div className="space-y-3 text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -271,7 +295,6 @@ export default function VerifyEmailPage() {
             </p>
           </div>
 
-          {/* Code input */}
           <div className="space-y-4">
             <label className="block text-center font-medium text-gray-900 dark:text-white">
               Enter Verification Code
@@ -300,7 +323,6 @@ export default function VerifyEmailPage() {
             </p>
           </div>
 
-          {/* Helper message when the code has 6 digits */}
           {codeComplete && !error && !message && (
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-center dark:border-blue-900/60 dark:bg-blue-950/40">
               <p className="font-medium text-blue-800 dark:text-blue-100">
@@ -309,7 +331,10 @@ export default function VerifyEmailPage() {
             </div>
           )}
 
-          {/* Error message */}
+          {/*
+            Verification Error Message
+            Shows readable feedback when the code is invalid, expired, or the backend cannot verify it.
+          */}
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-center dark:border-red-900/60 dark:bg-red-950/40">
               <p className="font-medium leading-6 text-red-800 dark:text-red-100">
@@ -318,7 +343,10 @@ export default function VerifyEmailPage() {
             </div>
           )}
 
-          {/* Success/info messages */}
+          {/*
+            Resend Success Message
+            Confirms that a new verification code request was accepted.
+          */}
           {message === "RESENT_OK" && (
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center dark:border-slate-700 dark:bg-slate-950">
               <p className="font-medium text-gray-800 dark:text-slate-100">
@@ -335,7 +363,6 @@ export default function VerifyEmailPage() {
             </div>
           )}
 
-          {/* Verify button */}
           <button
             type="button"
             onClick={onVerify}
@@ -350,7 +377,6 @@ export default function VerifyEmailPage() {
             {busy ? "Verifying..." : "Verify and Complete Setup"}
           </button>
 
-          {/* Resend section */}
           <div className="space-y-3 pt-2 text-center">
             <p className="text-sm text-gray-600 dark:text-slate-300">
               Didn&apos;t receive the code?
@@ -373,7 +399,6 @@ export default function VerifyEmailPage() {
           </div>
         </div>
 
-        {/* Help card */}
         <div className="rounded-2xl border border-gray-200 bg-blue-50/40 p-6 dark:border-slate-800 dark:bg-slate-900">
           <div className="space-y-2 text-sm text-gray-600 dark:text-slate-300">
             <p className="font-medium text-gray-900 dark:text-white">
@@ -389,7 +414,6 @@ export default function VerifyEmailPage() {
           </div>
         </div>
 
-        {/* Back link */}
         <div className="text-center">
           <Link
             href="/auth/signup"

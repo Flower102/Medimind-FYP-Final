@@ -15,6 +15,12 @@ Each error now includes:
 so the frontend can show helpful plain-English feedback.
 """
 
+# ---------------------------------------------------------------------
+# Imports and Router Setup
+# ---------------------------------------------------------------------
+# This section imports FastAPI tools, database sessions, authentication, and schemas.
+# The router groups all note-related endpoints under the /notes path.
+# ---------------------------------------------------------------------
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -25,6 +31,12 @@ from . import models, schemas
 router = APIRouter(prefix="/notes", tags=["Notes"])
 
 
+# ---------------------------------------------------------------------
+# Shared API Error Helper
+# ---------------------------------------------------------------------
+# This helper keeps note API errors consistent and easy for the frontend to display.
+# It gives each error a code, a user-friendly message, and a suggested action.
+# ---------------------------------------------------------------------
 def raise_api_error(status_code: int, code: str, message: str, action: str):
     """
     Consistent backend error format.
@@ -40,6 +52,12 @@ def raise_api_error(status_code: int, code: str, message: str, action: str):
     )
 
 
+# ---------------------------------------------------------------------
+# List Notes Route
+# ---------------------------------------------------------------------
+# This route returns all notes owned by the signed-in user.
+# Notes are ordered by newest update so recent work appears first.
+# ---------------------------------------------------------------------
 @router.get("", response_model=list[schemas.NoteOut])
 def list_notes(
     db: Session = Depends(get_db),
@@ -57,6 +75,12 @@ def list_notes(
     )
 
 
+# ---------------------------------------------------------------------
+# Create Note Route
+# ---------------------------------------------------------------------
+# This route saves a new learning note for the signed-in user.
+# It validates that the content is not empty before writing to the database.
+# ---------------------------------------------------------------------
 @router.post("", response_model=schemas.NoteOut, status_code=status.HTTP_201_CREATED)
 def create_note(
     payload: schemas.NoteCreate,
@@ -94,6 +118,12 @@ def create_note(
     return note
 
 
+# ---------------------------------------------------------------------
+# Get Single Note Route
+# ---------------------------------------------------------------------
+# This route loads one saved note by id while checking ownership.
+# The ownership check prevents users from opening someone else's note.
+# ---------------------------------------------------------------------
 @router.get("/{note_id}", response_model=schemas.NoteOut)
 def get_note(
     note_id: int,
@@ -121,6 +151,12 @@ def get_note(
     return note
 
 
+# ---------------------------------------------------------------------
+# Update Note Route
+# ---------------------------------------------------------------------
+# This route updates only the note fields sent by the frontend.
+# It protects existing note data from being overwritten accidentally.
+# ---------------------------------------------------------------------
 @router.put("/{note_id}", response_model=schemas.NoteOut)
 def update_note(
     note_id: int,
@@ -180,6 +216,12 @@ def update_note(
     return note
 
 
+# ---------------------------------------------------------------------
+# Delete Note Route
+# ---------------------------------------------------------------------
+# This route permanently removes one note owned by the signed-in user.
+# It checks ownership first so one account cannot delete another account's note.
+# ---------------------------------------------------------------------
 @router.delete("/{note_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_note(
     note_id: int,

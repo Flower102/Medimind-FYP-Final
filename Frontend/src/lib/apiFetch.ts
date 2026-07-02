@@ -1,16 +1,10 @@
 // Frontend/src/lib/apiFetch.ts
 
-/**
- * Shared API fetch helper for the MediMind frontend.
- *
- * The browser calls:
- *   /api/backend/...
- *
- * Next.js proxy forwards to FastAPI:
- *   http://127.0.0.1:8000/...
- *
- * This keeps httpOnly cookies working across the app.
- */
+/* -------------------------------------------------------------------------- */
+/* Shared API Fetch Overview                                                   */
+/* This file centralises frontend API requests so authenticated calls, JSON    */
+/* handling, and backend error messages behave consistently across the app.    */
+/* -------------------------------------------------------------------------- */
 
 export type ApiFetchOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -19,6 +13,12 @@ export type ApiFetchOptions = {
   cache?: RequestCache;
   signal?: AbortSignal;
 };
+
+/* -------------------------------------------------------------------------- */
+/* Backend Error Response Types                                                */
+/* These types represent the different shapes FastAPI may return when a        */
+/* request fails, including plain strings and structured detail objects.       */
+/* -------------------------------------------------------------------------- */
 
 type BackendErrorDetail =
   | string
@@ -32,6 +32,12 @@ type BackendErrorBody = {
   detail?: BackendErrorDetail;
   message?: string;
 };
+
+/* -------------------------------------------------------------------------- */
+/* Friendly Error Message Map                                                  */
+/* Backend error codes are converted into plain English messages here. This    */
+/* keeps pages from showing technical codes directly to users.                 */
+/* -------------------------------------------------------------------------- */
 
 const FRIENDLY_ERROR_MESSAGES: Record<string, string> = {
   REQUEST_FAILED: "The request failed. Please try again.",
@@ -89,6 +95,12 @@ const FRIENDLY_ERROR_MESSAGES: Record<string, string> = {
   SERVER_ERROR: "The server had a problem. Please try again later.",
 };
 
+/* -------------------------------------------------------------------------- */
+/* HTTP Status Fallback Helper                                                 */
+/* If the backend does not provide a message, this helper returns a readable   */
+/* fallback based on the HTTP status code.                                     */
+/* -------------------------------------------------------------------------- */
+
 function friendlyFallbackFromStatus(status: number) {
   switch (status) {
     case 400:
@@ -112,9 +124,21 @@ function friendlyFallbackFromStatus(status: number) {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Object Type Guard                                                           */
+/* This helper confirms an unknown value is an object before the code reads    */
+/* fields such as detail, code, or message from it.                            */
+/* -------------------------------------------------------------------------- */
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
+
+/* -------------------------------------------------------------------------- */
+/* API Error Class                                                             */
+/* This custom Error stores the backend code, HTTP status, and original data   */
+/* so pages can display messages or react to specific failure types.           */
+/* -------------------------------------------------------------------------- */
 
 export class ApiError extends Error {
   code: string;
@@ -130,6 +154,12 @@ export class ApiError extends Error {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Response Body Reader                                                        */
+/* Backend responses may be JSON, plain text, or empty. This helper reads all  */
+/* three safely so error handling does not crash.                              */
+/* -------------------------------------------------------------------------- */
+
 async function readResponseBody(res: Response): Promise<unknown> {
   const text = await res.text();
 
@@ -141,6 +171,12 @@ async function readResponseBody(res: Response): Promise<unknown> {
     return { message: text };
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Backend Error Parser                                                        */
+/* This function extracts a stable code and readable message from backend      */
+/* responses, falling back to known code and HTTP status messages as needed.   */
+/* -------------------------------------------------------------------------- */
 
 function getErrorInfo(data: unknown, status: number) {
   const fallbackCode = `REQUEST_FAILED_${status}`;
@@ -191,6 +227,12 @@ function getErrorInfo(data: unknown, status: number) {
   };
 }
 
+/* -------------------------------------------------------------------------- */
+/* Public Error Message Helper                                                 */
+/* Pages can use this helper to turn unknown caught errors into safe text for  */
+/* banners, modals, or inline validation messages.                             */
+/* -------------------------------------------------------------------------- */
+
 export function getApiErrorMessage(error: unknown, fallback = "Something went wrong. Please try again.") {
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;
@@ -198,22 +240,22 @@ export function getApiErrorMessage(error: unknown, fallback = "Something went wr
   return fallback;
 }
 
-/**
- * Main API helper.
- *
- * Use like:
- *   await apiFetch("/auth/me")
- *
- * Or:
- *   await apiFetch("/auth/signup", {
- *     method: "POST",
- *     json: { email, password }
- *   })
- */
+/* -------------------------------------------------------------------------- */
+/* Main API Fetch Helper                                                       */
+/* This is the main request helper for modern frontend code. It sends requests */
+/* through /api/backend, includes cookies, parses responses, and throws ApiError. */
+/* -------------------------------------------------------------------------- */
+
 export async function apiFetch<T>(
   path: string,
   options: ApiFetchOptions = {}
 ): Promise<T> {
+  /* ------------------------------------------------------------------------ */
+  /* Request Setup                                                             */
+  /* The path is normalised and JSON bodies are detected so the correct method,*/
+  /* headers, cache behaviour, and body are sent to the proxy.                 */
+  /* ------------------------------------------------------------------------ */
+
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const hasJson = typeof options.json !== "undefined";
 
@@ -228,6 +270,12 @@ export async function apiFetch<T>(
     },
     body: hasJson ? JSON.stringify(options.json) : undefined,
   });
+
+  /* ------------------------------------------------------------------------ */
+  /* Response Processing                                                       */
+  /* The response is parsed once. Failed responses become structured ApiError  */
+  /* instances, while successful responses return typed data to the caller.    */
+  /* ------------------------------------------------------------------------ */
 
   const data = await readResponseBody(res);
 

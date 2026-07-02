@@ -1,5 +1,11 @@
 // frontend/src/lib/progressApi.ts
 
+/* -------------------------------------------------------------------------- */
+/* Progress Chart Types                                                        */
+/* These types describe the small data points and summaries used by progress   */
+/* charts, recent quiz cards, goals, and reminders.                            */
+/* -------------------------------------------------------------------------- */
+
 export type ProgressPoint = {
   label: string;
   value: number;
@@ -27,6 +33,12 @@ export type ReminderNote = {
   reason: string;
 };
 
+/* -------------------------------------------------------------------------- */
+/* Frontend Progress Summary Type                                              */
+/* This is the camelCase shape used by the Dashboard and Progress pages after  */
+/* the raw backend response has been normalised.                               */
+/* -------------------------------------------------------------------------- */
+
 export type ProgressSummary = {
   totalNotes: number;
   totalChatSessions: number;
@@ -49,6 +61,12 @@ export type ProgressSummary = {
   gentleReminder: string;
   reminderNote: ReminderNote | null;
 };
+
+/* -------------------------------------------------------------------------- */
+/* Raw Backend Progress Type                                                   */
+/* FastAPI returns snake_case fields. This type documents the backend shape so */
+/* the normalisation function can safely convert it for the frontend.          */
+/* -------------------------------------------------------------------------- */
 
 type RawProgressSummary = {
   total_notes: number;
@@ -88,10 +106,22 @@ type RawProgressSummary = {
   } | null;
 };
 
+/* -------------------------------------------------------------------------- */
+/* API Error Shape                                                             */
+/* This type represents the structured error format that the progress endpoint */
+/* may return when the request fails.                                          */
+/* -------------------------------------------------------------------------- */
+
 type ApiErrorBody = {
   detail?: string | { code?: string; message?: string; action?: string };
   message?: string;
 };
+
+/* -------------------------------------------------------------------------- */
+/* Response Body Reader                                                        */
+/* Progress requests may return JSON, plain text errors, or empty bodies. This */
+/* helper reads each safely before normalisation or error handling.            */
+/* -------------------------------------------------------------------------- */
 
 async function readResponseBody(res: Response): Promise<unknown> {
   const text = await res.text();
@@ -104,6 +134,12 @@ async function readResponseBody(res: Response): Promise<unknown> {
     return { message: text };
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Progress Error Message Helper                                               */
+/* This function extracts the clearest backend error message, using practical  */
+/* fallbacks for authentication and server problems.                           */
+/* -------------------------------------------------------------------------- */
 
 function getErrorMessage(data: unknown, status: number) {
   const errorData = data as ApiErrorBody;
@@ -132,6 +168,12 @@ function getErrorMessage(data: unknown, status: number) {
 
   return `Request failed with status ${status}`;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Progress Summary Normalisation                                              */
+/* This converts FastAPI snake_case fields into the camelCase ProgressSummary  */
+/* shape used by the frontend pages and adds safe fallback text where needed.  */
+/* -------------------------------------------------------------------------- */
 
 function normaliseProgressSummary(raw: RawProgressSummary): ProgressSummary {
   return {
@@ -173,6 +215,12 @@ function normaliseProgressSummary(raw: RawProgressSummary): ProgressSummary {
     reminderNote: raw.reminder_note ?? null,
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Get Progress Summary Request                                                */
+/* Loads the user's dashboard/progress summary through the Next.js proxy, then */
+/* normalises the backend response for frontend display.                       */
+/* -------------------------------------------------------------------------- */
 
 export async function getProgressSummary(): Promise<ProgressSummary> {
   const res = await fetch("/api/backend/progress/summary", {

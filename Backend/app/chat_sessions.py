@@ -13,6 +13,13 @@ It now returns clearer backend errors with:
 - message: plain English explanation
 - action: what the user/developer should do next
 """
+# ---------------------------------------------------------------------
+# Imports and Chat Router Setup
+# ---------------------------------------------------------------------
+# This section imports database, authentication, and schema tools for saved chat sessions.
+# The router groups all chat-session endpoints under one API prefix.
+# ---------------------------------------------------------------------
+
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import desc
@@ -28,6 +35,13 @@ router = APIRouter(prefix="/chat-sessions", tags=["Chat Sessions"])
 # ---------------------------------------------------------
 # Shared error helper
 # ---------------------------------------------------------
+
+# ---------------------------------------------------------------------
+# Shared API Error Helper
+# ---------------------------------------------------------------------
+# This helper raises backend errors in a consistent shape.
+# It helps the frontend show clear messages and suggested actions.
+# ---------------------------------------------------------------------
 
 def raise_api_error(status_code: int, code: str, message: str, action: str):
     """
@@ -55,6 +69,13 @@ def raise_api_error(status_code: int, code: str, message: str, action: str):
 # Small helper functions
 # ---------------------------------------------------------
 
+# ---------------------------------------------------------------------
+# Chat Title Helper
+# ---------------------------------------------------------------------
+# This helper creates a short title from the first user message.
+# It makes saved chat sessions easier to recognise later.
+# ---------------------------------------------------------------------
+
 def create_title_from_text(text: str) -> str:
     """
     Creates a short chat title from the first user message.
@@ -70,6 +91,13 @@ def create_title_from_text(text: str) -> str:
 
     return cleaned[:55] + "..." if len(cleaned) > 55 else cleaned
 
+
+# ---------------------------------------------------------------------
+# Chat Role Validation
+# ---------------------------------------------------------------------
+# This helper prevents invalid message roles from being saved.
+# Only user and assistant messages should be stored in chat history.
+# ---------------------------------------------------------------------
 
 def validate_chat_role(role: str):
     """
@@ -87,6 +115,13 @@ def validate_chat_role(role: str):
         )
 
 
+# ---------------------------------------------------------------------
+# Chat Content Validation
+# ---------------------------------------------------------------------
+# This helper prevents empty chat messages from being saved.
+# It keeps the database clean and avoids useless saved messages.
+# ---------------------------------------------------------------------
+
 def validate_chat_content(content: str):
     """
     Prevents empty chat messages being saved.
@@ -100,6 +135,13 @@ def validate_chat_content(content: str):
             "Please type a message before sending, or attach a file with a clear question.",
         )
 
+
+# ---------------------------------------------------------------------
+# Chat Ordering Helper
+# ---------------------------------------------------------------------
+# This helper chooses the best timestamp column for sorting chats.
+# It keeps listing stable if model naming changed during development.
+# ---------------------------------------------------------------------
 
 def get_chat_session_order_column():
     """
@@ -126,6 +168,13 @@ def get_chat_session_order_column():
 
     return models.ChatSession.id
 
+
+# ---------------------------------------------------------------------
+# Chat Ownership Loader
+# ---------------------------------------------------------------------
+# This helper loads a chat session that belongs to the current user.
+# It prevents users from opening or editing another account’s chat.
+# ---------------------------------------------------------------------
 
 def get_chat_session_or_404(
     session_id: int,
@@ -162,6 +211,13 @@ def get_chat_session_or_404(
 # ---------------------------------------------------------
 # Routes
 # ---------------------------------------------------------
+
+# ---------------------------------------------------------------------
+# Create Chat Session Route
+# ---------------------------------------------------------------------
+# This route saves a new AI chat session and its initial messages.
+# It also links Learning Workspace chats to notes when needed.
+# ---------------------------------------------------------------------
 
 @router.post(
     "",
@@ -270,6 +326,13 @@ def create_chat_session(
     return session
 
 
+# ---------------------------------------------------------------------
+# List Chat Sessions Route
+# ---------------------------------------------------------------------
+# This route returns all saved chats for the signed-in user.
+# Recent or updated chats are listed first for easier navigation.
+# ---------------------------------------------------------------------
+
 @router.get("", response_model=list[schemas.ChatSessionOut])
 def list_chat_sessions(
     db: Session = Depends(get_db),
@@ -289,6 +352,13 @@ def list_chat_sessions(
     )
 
 
+# ---------------------------------------------------------------------
+# Get Chat Session Route
+# ---------------------------------------------------------------------
+# This route loads one saved chat and its messages.
+# It uses the ownership loader to keep private chats secure.
+# ---------------------------------------------------------------------
+
 @router.get("/{session_id}", response_model=schemas.ChatSessionDetailOut)
 def get_chat_session(
     session_id: int,
@@ -301,6 +371,13 @@ def get_chat_session(
 
     return get_chat_session_or_404(session_id, db, current_user)
 
+
+# ---------------------------------------------------------------------
+# Update Chat Session Route
+# ---------------------------------------------------------------------
+# This route updates chat title or favourite status.
+# It only changes fields actually sent by the frontend.
+# ---------------------------------------------------------------------
 
 @router.patch("/{session_id}", response_model=schemas.ChatSessionDetailOut)
 def update_chat_session(
@@ -360,6 +437,13 @@ def update_chat_session(
     return session
 
 
+# ---------------------------------------------------------------------
+# Add Chat Message Route
+# ---------------------------------------------------------------------
+# This route saves a new message inside an existing chat session.
+# It validates role and content before writing to the database.
+# ---------------------------------------------------------------------
+
 @router.post(
     "/{session_id}/messages",
     response_model=schemas.ChatMessageOut,
@@ -402,6 +486,13 @@ def add_chat_message(
 
     return message
 
+
+# ---------------------------------------------------------------------
+# Delete Chat Session Route
+# ---------------------------------------------------------------------
+# This route permanently deletes one saved chat session.
+# Cascade rules remove its messages from the database as well.
+# ---------------------------------------------------------------------
 
 @router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_chat_session(

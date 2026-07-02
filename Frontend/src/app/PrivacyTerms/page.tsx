@@ -1,28 +1,48 @@
 "use client";
 
-/**
- * src/app/PrivacyTerms/page.tsx
- * Privacy Notice page.
- * Fixes dark-mode text contrast and uses Tailwind canonical important classes.
- */
+/* -------------------------------------------------------------------------- */
+/* Privacy Notice Imports                                                      */
+/* These imports provide shared public layout pieces and access to translated  */
+/* text used by the privacy notice page.                                       */
+/* -------------------------------------------------------------------------- */
 
 import PublicNav from "../../components/PublicNav";
 import Footer from "../../components/Footer";
 import { useI18n } from "../../i18n/I18nProvider";
 
-/* ----------------------------- Translation fallback helper ----------------------------- */
+/* -------------------------------------------------------------------------- */
+/* Translation Fallback Helper                                                 */
+/* This helper keeps the page readable even when a translation key has not been */
+/* added yet by returning a safe English fallback.                             */
+/* -------------------------------------------------------------------------- */
 
 function safeText(value: string, key: string, fallback: string) {
   if (!value || value === key) return fallback;
   return value;
 }
 
-/* ----------------------------- Page component ----------------------------- */
+/* -------------------------------------------------------------------------- */
+/* Privacy Notice Page                                                         */
+/* This page explains what information MediMind Lite collects, why it is used, */
+/* and what choices the user has about their data.                             */
+/* -------------------------------------------------------------------------- */
 
 export default function PrivacyTermsPage() {
+  /* ------------------------------------------------------------------------ */
+  /* Translation Setup                                                         */
+  /* The title is pulled from the i18n provider and falls back to English when */
+  /* the translation is missing.                                               */
+  /* ------------------------------------------------------------------------ */
+
   const { t } = useI18n();
 
   const title = safeText(t("privacy.title"), "privacy.title", "Privacy Notice");
+
+  /* ------------------------------------------------------------------------ */
+  /* Privacy Content                                                           */
+  /* Each item represents one visible privacy section. Some sections use a     */
+  /* paragraph, while others use a list for easier reading.                    */
+  /* ------------------------------------------------------------------------ */
 
   const sections = [
     {
@@ -73,15 +93,31 @@ export default function PrivacyTermsPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900! transition-colors dark:bg-slate-950 dark:text-white!">
-      {/* Shared navigation */}
+      {/* -------------------------------------------------------------------- */}
+      {/* Shared Public Navigation                                              */}
+      {/* The shared navigation gives the privacy page the same public site     */}
+      {/* structure as the landing, features, and conditions pages.             */}
+      {/* -------------------------------------------------------------------- */}
+
       <PublicNav />
 
-      {/* Privacy content card */}
+      {/* -------------------------------------------------------------------- */}
+      {/* Privacy Content Card                                                  */}
+      {/* This card holds the privacy notice content in a focused reading area  */}
+      {/* with styling for both light and dark mode.                            */}
+      {/* -------------------------------------------------------------------- */}
+
       <section className="mx-auto max-w-3xl px-6 py-14">
         <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-900">
           <h1 className="text-3xl font-semibold tracking-tight text-slate-950! dark:text-white!">
             {title}
           </h1>
+
+          {/* ---------------------------------------------------------------- */}
+          {/* Privacy Section List                                              */}
+          {/* Each privacy section is rendered from the data array. Paragraphs  */}
+          {/* and bullet lists are supported so the content stays readable.     */}
+          {/* ---------------------------------------------------------------- */}
 
           <div className="mt-10 space-y-8">
             {sections.map((section) => (
@@ -109,7 +145,12 @@ export default function PrivacyTermsPage() {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* -------------------------------------------------------------------- */}
+      {/* Page Footer                                                           */}
+      {/* The footer provides consistent public-page ending content and keeps   */}
+      {/* the page aligned with the rest of the MediMind site.                  */}
+      {/* -------------------------------------------------------------------- */}
+
       <div className="mx-auto max-w-3xl px-6 pb-12">
         <Footer />
       </div>

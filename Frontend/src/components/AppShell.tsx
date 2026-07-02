@@ -1,6 +1,16 @@
 // /src/components/AppShell.tsx
 "use client";
 
+/* -------------------------------------------------------------------------- */
+/* File Overview */
+/* Application Shell Component. Provides the private app layout, sidebar navigation, account menu, profile display, and accessibility controls. */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Imports */
+/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
+/* -------------------------------------------------------------------------- */
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -38,15 +48,30 @@ import {
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useI18n } from "../i18n/I18nProvider";
 
+/* -------------------------------------------------------------------------- */
+/* Clsx Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function clsx(...xs: Array<string | false | null | undefined>) {
   return xs.filter(Boolean).join(" ");
 }
+
+/* -------------------------------------------------------------------------- */
+/* Type Definitions */
+/* Defines the data shapes used for props, API responses, form values, and page state. */
+/* -------------------------------------------------------------------------- */
 
 type NavItem = {
   href: string;
   label: string;
   icon: ReactNode;
 };
+
+/* -------------------------------------------------------------------------- */
+/* Type Definitions */
+/* Defines the data shapes used for props, API responses, form values, and page state. */
+/* -------------------------------------------------------------------------- */
 
 type ShellUser = {
   id: number;
@@ -57,9 +82,24 @@ type ShellUser = {
   avatar_url?: string | null;
 };
 
+/* -------------------------------------------------------------------------- */
+/* Type Definitions */
+/* Defines the data shapes used for props, API responses, form values, and page state. */
+/* -------------------------------------------------------------------------- */
+
 type TextSize = "normal" | "large" | "extra-large";
 
+/* -------------------------------------------------------------------------- */
+/* Static Page Data */
+/* Stores reusable labels, routes, lists, or settings that stay the same while the component renders. */
+/* -------------------------------------------------------------------------- */
+
 const TEXT_SIZE_VALUES = ["normal", "large", "extra-large"] as const;
+
+/* -------------------------------------------------------------------------- */
+/* Ls Get Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function lsGet(key: string): string | null {
   if (typeof window === "undefined") return null;
@@ -71,6 +111,11 @@ function lsGet(key: string): string | null {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Ls Set Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function lsSet(key: string, value: string) {
   if (typeof window === "undefined") return;
 
@@ -78,9 +123,13 @@ function lsSet(key: string, value: string) {
     window.localStorage.setItem(key, value);
     window.dispatchEvent(new Event("mm:storage"));
   } catch {
-    // localStorage can fail in restricted browser modes.
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Subscribe Helper */
+/* Connects browser-level settings or events to the React component state. */
+/* -------------------------------------------------------------------------- */
 
 function subscribe(callback: () => void) {
   if (typeof window === "undefined") return () => {};
@@ -99,6 +148,11 @@ function subscribe(callback: () => void) {
     window.removeEventListener("mm:storage", onStorage);
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Use Lsbool Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function useLSBool(key: string, defaultValue: boolean) {
   const getSnapshot = useCallback(() => {
@@ -152,6 +206,11 @@ function useLSString<T extends string>(
   return [value, setValue] as const;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Get Shell User Name Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
+
 function getShellUserName(user: ShellUser | null, fallback: string) {
   const displayName = user?.display_name?.trim();
   const fullName = `${user?.first_name ?? ""} ${user?.surname ?? ""}`.trim();
@@ -159,6 +218,11 @@ function getShellUserName(user: ShellUser | null, fallback: string) {
 
   return displayName || fullName || emailName || fallback;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Get Shell User Initials Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
 
 function getShellUserInitials(user: ShellUser | null) {
   const display = user?.display_name?.trim()?.[0] ?? "";
@@ -171,6 +235,11 @@ function getShellUserInitials(user: ShellUser | null) {
   return user?.email?.[0]?.toUpperCase() ?? "U";
 }
 
+/* -------------------------------------------------------------------------- */
+/* Get Shell Avatar Src Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
+
 function getShellAvatarSrc(user: ShellUser | null) {
   const url = user?.avatar_url;
 
@@ -182,6 +251,11 @@ function getShellAvatarSrc(user: ShellUser | null) {
   return url;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Notify User Updated Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function notifyUserUpdated(user: ShellUser) {
   if (typeof window === "undefined") return;
 
@@ -191,22 +265,28 @@ function notifyUserUpdated(user: ShellUser) {
     window.localStorage.setItem("mm_display_name", displayName);
     window.localStorage.setItem("mm_avatar_url", user.avatar_url ?? "");
   } catch {
-    // localStorage can fail in restricted browser modes.
   }
 
-  // This event keeps AppShell, the sidebar account card, the profile modal,
-  // and the Settings page using the same latest user details.
   window.dispatchEvent(
     new CustomEvent<ShellUser>("mm:user-updated", {
       detail: user,
     })
   );
 
-  // Also refresh components that already listen to your app storage event.
   window.dispatchEvent(new Event("mm:storage"));
 }
 
+/* -------------------------------------------------------------------------- */
+/* Main Page Component */
+/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
+/* -------------------------------------------------------------------------- */
+
 export default function AppShell({ children }: { children: ReactNode }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const pathname = usePathname();
   const { t } = useI18n();
 
@@ -290,6 +370,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
     false
   );
 
+  /* -------------------------------------------------------------------------- */
+  /* State Values */
+  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
+  /* -------------------------------------------------------------------------- */
+
   const [currentUser, setCurrentUser] = useState<ShellUser | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -305,7 +390,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
+  /* -------------------------------------------------------------------------- */
+  /* Close Mobile Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
+
   const closeMobile = useCallback(() => setSidebarOpen(false), [setSidebarOpen]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Load Current User Handler */
+  /* Loads the latest backend data and updates the page state used by the interface. */
+  /* -------------------------------------------------------------------------- */
 
   const loadCurrentUser = useCallback(async () => {
     try {
@@ -322,13 +417,22 @@ export default function AppShell({ children }: { children: ReactNode }) {
       setCurrentUser(data);
       setDisplayNameDraft(data.display_name ?? "");
     } catch {
-      // If the session is missing/expired, protected pages can handle this elsewhere.
     }
   }, []);
+
+  /* -------------------------------------------------------------------------- */
+  /* Side Effects */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
     loadCurrentUser();
   }, [loadCurrentUser]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -352,6 +456,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
   }, [loadCurrentUser]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     if (!pendingAvatarPreview) return;
 
@@ -359,6 +468,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
       URL.revokeObjectURL(pendingAvatarPreview);
     };
   }, [pendingAvatarPreview]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
     if (!accountMenuOpen) return;
@@ -378,10 +492,20 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
   }, [accountMenuOpen]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
     document.documentElement.style.colorScheme = dark ? "dark" : "light";
   }, [dark]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
     const sizeMap = {
@@ -393,9 +517,19 @@ export default function AppShell({ children }: { children: ReactNode }) {
     document.documentElement.style.fontSize = sizeMap[textSize];
   }, [textSize]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     document.documentElement.style.filter = highContrast ? "contrast(1.1)" : "";
   }, [highContrast]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
     const styleId = "mm-reduce-motion-style";
@@ -421,6 +555,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
     document.head.appendChild(style);
   }, [reduceMotion]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
     if (speechOff) {
@@ -454,6 +593,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
   }, [speechOff]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     if (!topSettingsOpen) return;
 
@@ -472,16 +616,31 @@ export default function AppShell({ children }: { children: ReactNode }) {
     };
   }, [topSettingsOpen]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Is Active Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
+
   const isActive = useCallback(
     (href: string) =>
       pathname === href || (href !== "/" && pathname.startsWith(href + "/")),
     [pathname]
   );
 
+  /* -------------------------------------------------------------------------- */
+  /* On Nav Click Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
+
   const onNavClick = useCallback(() => {
     closeMobile();
     setAccountMenuOpen(false);
   }, [closeMobile]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Sidebar Sign Out Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   const handleSidebarSignOut = useCallback(async () => {
     try {
@@ -494,6 +653,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  /* -------------------------------------------------------------------------- */
+  /* Handle Switch Account Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
+
   const handleSwitchAccount = useCallback(async () => {
     try {
       await fetch("/api/backend/auth/signout", {
@@ -504,6 +668,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
       window.location.href = "/auth/signin";
     }
   }, []);
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Avatar Selected Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   const handleAvatarSelected = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -520,12 +689,22 @@ export default function AppShell({ children }: { children: ReactNode }) {
     []
   );
 
+  /* -------------------------------------------------------------------------- */
+  /* Close Profile Modal Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
+
   const closeProfileModal = useCallback(() => {
     setProfileModalOpen(false);
     setPendingAvatarFile(null);
     setPendingAvatarPreview(null);
     setDisplayNameDraft(currentUser?.display_name ?? "");
   }, [currentUser]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Save Profile Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
 
   const handleSaveProfile = useCallback(async () => {
     setIsSavingProfile(true);
@@ -598,6 +777,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const sidebarAvatarSrc = getShellAvatarSrc(currentUser);
   const modalAvatarSrc = pendingAvatarPreview || getShellAvatarSrc(currentUser);
   const shellUserName = getShellUserName(currentUser, accountLabel);
+
+  /* -------------------------------------------------------------------------- */
+  /* Render Account Block Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   function renderAccountBlock() {
     return (
@@ -683,9 +867,18 @@ export default function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="h-dvh w-full overflow-hidden bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50">
       <div className="flex h-full min-h-0 w-full overflow-hidden">
+        {/*
+          Desktop Sidebar Navigation
+          Provides the main app navigation for larger screens.
+        */}
         <aside
           className={clsx(
             "hidden h-full md:flex md:flex-col",
@@ -716,6 +909,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
 
+          {/*
+            Desktop Navigation Links
+            Lists the main private app pages and highlights the active route.
+          */}
           <nav className="min-h-0 flex-1 overflow-y-auto px-3 pb-6">
             <div className="space-y-1">
               {nav.map((item) => {
@@ -750,9 +947,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </div>
           </nav>
 
+          {/*
+            Desktop Account Block
+            Renders the profile/account controls at the bottom of the desktop sidebar.
+          */}
           {renderAccountBlock()}
         </aside>
 
+        {/*
+          Mobile Sidebar Overlay
+          Shows the private navigation drawer on small screens.
+        */}
         {sidebarOpen && (
           <div className="fixed inset-0 z-50 md:hidden">
             <div
@@ -829,8 +1034,20 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </div>
         )}
 
+        {/*
+          Main Shell Content Column
+          Holds the top utility bar and the scrollable page content area.
+        */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          {/*
+            Top Utility Bar
+            Provides mobile menu controls, speech toggle, and quick settings on private pages.
+          */}
           <header className="z-20 flex shrink-0 items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4 dark:border-slate-800 dark:bg-slate-950 md:px-8">
+            {/*
+              Sidebar Brand Area
+              Shows the MediMind identity at the top of the private app layout.
+            */}
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -886,6 +1103,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   <MoreHorizontal className="h-4 w-4" />
                 </button>
 
+                {/*
+                  Top Settings Dropdown
+                  Shows quick theme and language controls from the top utility bar.
+                */}
                 {topSettingsOpen && (
                   <div className="absolute right-0 z-50 mt-3 w-72 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                     <button
@@ -926,6 +1147,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </div>
           </header>
 
+          {/*
+            Scrollable Page Content
+            Renders the active private page inside the shell layout.
+          */}
           <main className="min-h-0 flex-1 overflow-y-auto px-6 pb-12 pt-4 md:px-8">
             <div className={clsx("mx-auto min-h-full", contentMaxWidth)}>
               {children}
@@ -934,6 +1159,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </div>
       </div>
 
+      {/*
+        Profile Modal Overlay
+        Lets the user update profile image and display name without leaving the current page.
+      */}
       {profileModalOpen && (
         <div className="fixed inset-0 z-80 flex items-center justify-center bg-black/50 px-4">
           <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
@@ -964,6 +1193,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </button>
             </div>
 
+            {/*
+              Profile Avatar and Identity Area
+              Shows the current profile picture, display name, and email address.
+            */}
             <div className="mt-8 flex flex-col items-center text-center">
               <div className="relative">
                 <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-4xl font-semibold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
@@ -1014,6 +1247,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </div>
 
             <div className="mt-6">
+              {/*
+                Profile Display Name Field
+                Lets the user edit the display name shown in account areas.
+              */}
               <label className="block rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
                 <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   {tt("account.profileModal.displayName", "Display name")}
@@ -1031,6 +1268,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </label>
             </div>
 
+            {/*
+              Profile Modal Actions
+              Saves the updated profile details or keeps the modal state controlled.
+            */}
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
                 type="button"

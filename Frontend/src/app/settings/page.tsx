@@ -1,19 +1,15 @@
-// /src/app/settings/page.tsx
 "use client";
 
-/**
- * Settings page.
- *
- * This page lets the user:
- * - Update profile information
- * - Change password
- * - Change appearance/accessibility options
- * - Sign out
- *
- * API errors now use the shared apiFetch helper, so backend messages like:
- *   detail.message
- * show as plain English text.
- */
+
+/* -------------------------------------------------------------------------- */
+/* File Overview */
+/* Settings Page. Manages profile information, password changes, appearance, accessibility options, sessions, and account deletion. */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Imports */
+/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
+/* -------------------------------------------------------------------------- */
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -38,6 +34,11 @@ import {
 import { useI18n } from "@/src/i18n/I18nProvider";
 import { apiFetch, getApiErrorMessage } from "@/src/lib/apiFetch";
 
+/* -------------------------------------------------------------------------- */
+/* Type Definitions */
+/* Defines the data shapes used for props, API responses, form values, and page state. */
+/* -------------------------------------------------------------------------- */
+
 type CurrentUser = {
   id: number;
   email: string;
@@ -47,7 +48,17 @@ type CurrentUser = {
   avatar_url?: string | null;
 };
 
+/* -------------------------------------------------------------------------- */
+/* Type Definitions */
+/* Defines the data shapes used for props, API responses, form values, and page state. */
+/* -------------------------------------------------------------------------- */
+
 type TextSize = "normal" | "large" | "extra-large";
+
+/* -------------------------------------------------------------------------- */
+/* Card Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function Card({
   children,
@@ -56,6 +67,11 @@ function Card({
   children: React.ReactNode;
   className?: string;
 }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div
       className={[
@@ -69,12 +85,22 @@ function Card({
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Get Current User Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
+
 async function getCurrentUser() {
   return apiFetch<CurrentUser>("/auth/me", {
     method: "GET",
     cache: "no-store",
   });
 }
+
+/* -------------------------------------------------------------------------- */
+/* Update Profile Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 async function updateProfile(payload: {
   first_name?: string | null;
@@ -87,6 +113,11 @@ async function updateProfile(payload: {
   });
 }
 
+
+/* -------------------------------------------------------------------------- */
+/* Get User Display Name Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
 
 function getUserDisplayName(currentUser: CurrentUser) {
   const displayName = currentUser.display_name?.trim();
@@ -101,25 +132,31 @@ function getUserDisplayName(currentUser: CurrentUser) {
   return fullName || currentUser.email;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Notify Account Updated Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function notifyAccountUpdated(currentUser: CurrentUser) {
   if (typeof window === "undefined") return;
 
   const displayName = getUserDisplayName(currentUser);
-  // Keep a small display cache for account/sidebar components that read from localStorage.
-  // This does not store tokens or health notes.
   window.localStorage.setItem("mm_display_name", displayName);
   window.localStorage.setItem("mm_avatar_url", currentUser.avatar_url ?? "");
 
-  // Tell client components such as the sidebar/account modal to refresh their user display.
   window.dispatchEvent(
     new CustomEvent("mm:user-updated", {
       detail: currentUser,
     })
   );
 
-  // Your app already uses this event for UI preference changes, so it is useful here too.
   window.dispatchEvent(new Event("mm:storage"));
 }
+
+/* -------------------------------------------------------------------------- */
+/* Change Password Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 async function changePassword(payload: {
   current_password: string;
@@ -131,17 +168,32 @@ async function changePassword(payload: {
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/* Sign Out Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 async function signOut() {
   return apiFetch<{ ok: boolean }>("/auth/signout", {
     method: "POST",
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/* Sign Out All Devices Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 async function signOutAllDevices() {
   return apiFetch<{ ok: boolean }>("/auth/signout-all", {
     method: "POST",
   });
 }
+
+/* -------------------------------------------------------------------------- */
+/* Delete Account Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 async function deleteAccount(payload: {
   current_password?: string;
@@ -153,6 +205,11 @@ async function deleteAccount(payload: {
   });
 }
 
+/* -------------------------------------------------------------------------- */
+/* Validate Password Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function validatePassword(password: string) {
   return (
     password.length >= 8 &&
@@ -162,6 +219,11 @@ function validatePassword(password: string) {
     /[^A-Za-z0-9]/.test(password)
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Get Stored Bool Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
 
 function getStoredBool(key: string, fallback: boolean) {
   if (typeof window === "undefined") return fallback;
@@ -173,10 +235,20 @@ function getStoredBool(key: string, fallback: boolean) {
   return value === "1";
 }
 
+/* -------------------------------------------------------------------------- */
+/* Set Stored Bool Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function setStoredBool(key: string, value: boolean) {
   window.localStorage.setItem(key, value ? "1" : "0");
   window.dispatchEvent(new Event("mm:storage"));
 }
+
+/* -------------------------------------------------------------------------- */
+/* Get Stored Text Size Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
 
 function getStoredTextSize(): TextSize {
   if (typeof window === "undefined") return "normal";
@@ -188,12 +260,27 @@ function getStoredTextSize(): TextSize {
   return "normal";
 }
 
+/* -------------------------------------------------------------------------- */
+/* Set Stored Text Size Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function setStoredTextSize(value: TextSize) {
   window.localStorage.setItem("mm_text_size", value);
   window.dispatchEvent(new Event("mm:storage"));
 }
 
+/* -------------------------------------------------------------------------- */
+/* Main Page Component */
+/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
+/* -------------------------------------------------------------------------- */
+
 export default function SettingsPage() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const router = useRouter();
   const { t } = useI18n();
 
@@ -204,6 +291,11 @@ export default function SettingsPage() {
     },
     [t]
   );
+
+  /* -------------------------------------------------------------------------- */
+  /* State Values */
+  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
+  /* -------------------------------------------------------------------------- */
 
   const [user, setUser] = useState<CurrentUser | null>(null);
 
@@ -235,15 +327,16 @@ export default function SettingsPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
-  // NEW: This stores the validation message for the delete-account password field.
-  // It allows the message "Please enter your current password." to show inside the modal.
   const [deletePasswordError, setDeletePasswordError] = useState("");
 
-  // Stores a general delete-account error at the top of the modal.
   const [deleteModalError, setDeleteModalError] = useState("");
 
-  // NEW: This stores the validation message for the DELETE confirmation field.
   const [deleteConfirmError, setDeleteConfirmError] = useState("");
+
+  /* -------------------------------------------------------------------------- */
+  /* Show Saved Message Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
 
   const showSavedMessage = useCallback((message: string) => {
     setSavedMessage(message);
@@ -253,11 +346,21 @@ export default function SettingsPage() {
     }, 1800);
   }, []);
 
+  /* -------------------------------------------------------------------------- */
+  /* Sync User Form Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
+
   const syncUserForm = useCallback((currentUser: CurrentUser) => {
     setFirstName(currentUser.first_name ?? "");
     setSurname(currentUser.surname ?? "");
     setDisplayName(currentUser.display_name ?? "");
   }, []);
+
+  /* -------------------------------------------------------------------------- */
+  /* Load User Handler */
+  /* Loads the latest backend data and updates the page state used by the interface. */
+  /* -------------------------------------------------------------------------- */
 
   const loadUser = useCallback(async () => {
     setIsLoadingUser(true);
@@ -275,6 +378,11 @@ export default function SettingsPage() {
     }
   }, [syncUserForm]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Side Effects */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     loadUser();
 
@@ -284,6 +392,11 @@ export default function SettingsPage() {
     setReduceMotion(getStoredBool("mm_reduce_motion", false));
     setTextSize(getStoredTextSize());
   }, [loadUser]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -306,6 +419,11 @@ export default function SettingsPage() {
       window.removeEventListener("mm:user-updated", handleUserUpdated);
     };
   }, [loadUser, syncUserForm]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Save Profile Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
 
   const handleSaveProfile = useCallback(async () => {
     setIsSavingProfile(true);
@@ -331,8 +449,12 @@ export default function SettingsPage() {
     }
   }, [displayName, firstName, router, showSavedMessage, surname, syncUserForm, tx]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Handle Change Password Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
+
   const handleChangePassword = useCallback(async () => {
-    // Keep password errors inside the Change Password card.
     setError("");
     setPasswordError("");
 
@@ -393,6 +515,11 @@ export default function SettingsPage() {
     }
   }, [confirmPassword, currentPassword, newPassword, router, showSavedMessage, tx]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Handle Toggle Dark Mode Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
+
   const handleToggleDarkMode = useCallback(() => {
     const next = !darkMode;
 
@@ -401,6 +528,11 @@ export default function SettingsPage() {
 
     showSavedMessage(tx("settings.status.appearanceUpdated", "Appearance updated."));
   }, [darkMode, showSavedMessage, tx]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Toggle Speech Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
 
   const handleToggleSpeech = useCallback(() => {
     const next = !speechOff;
@@ -415,6 +547,11 @@ export default function SettingsPage() {
     );
   }, [showSavedMessage, speechOff, tx]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Handle Toggle High Contrast Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
+
   const handleToggleHighContrast = useCallback(() => {
     const next = !highContrast;
 
@@ -426,6 +563,11 @@ export default function SettingsPage() {
     );
   }, [highContrast, showSavedMessage, tx]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Handle Toggle Reduce Motion Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
+
   const handleToggleReduceMotion = useCallback(() => {
     const next = !reduceMotion;
 
@@ -434,6 +576,11 @@ export default function SettingsPage() {
 
     showSavedMessage(tx("settings.status.motionUpdated", "Motion preference updated."));
   }, [reduceMotion, showSavedMessage, tx]);
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Text Size Change Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
 
   const handleTextSizeChange = useCallback(
     (value: TextSize) => {
@@ -444,6 +591,11 @@ export default function SettingsPage() {
     },
     [showSavedMessage, tx]
   );
+
+  /* -------------------------------------------------------------------------- */
+  /* Handle Sign Out Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   const handleSignOut = useCallback(async () => {
     setIsSigningOut(true);
@@ -459,6 +611,11 @@ export default function SettingsPage() {
     }
   }, [router]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Handle Sign Out All Devices Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
+
   const handleSignOutAllDevices = useCallback(async () => {
     setIsSigningOut(true);
     setError("");
@@ -473,8 +630,12 @@ export default function SettingsPage() {
     }
   }, [router]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Handle Delete Account Handler */
+  /* Handles the delete flow, including validation, backend calls, and UI cleanup. */
+  /* -------------------------------------------------------------------------- */
+
   const handleDeleteAccount = useCallback(async () => {
-    // Keep delete-account errors inside the delete modal.
     setError("");
     setDeleteModalError("");
     setDeletePasswordError("");
@@ -517,6 +678,11 @@ export default function SettingsPage() {
     }
   }, [deleteConfirmText, deletePassword, router]);
 
+  /* -------------------------------------------------------------------------- */
+  /* Conditional UI State */
+  /* Shows a focused loading, error, empty, or success view before the main interface is displayed. */
+  /* -------------------------------------------------------------------------- */
+
   if (isLoadingUser) {
     return (
       <div className="flex min-h-[55vh] items-center justify-center">
@@ -528,8 +694,22 @@ export default function SettingsPage() {
     );
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Settings Page Shell */
+  /* Arranges account, profile, appearance, accessibility, privacy, and security sections. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="space-y-8 pb-10">
+      {/*
+        Settings Hero Header
+        Introduces the settings area and provides a refresh action for reloading account data.
+      */}
       <div className="overflow-hidden rounded-3xl border border-blue-200 bg-linear-to-r from-blue-600 via-blue-600 to-indigo-700 p-6 text-white shadow-sm">
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           <div>
@@ -560,12 +740,20 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/*
+        Settings Error Banner
+        Displays backend or validation errors that need user attention.
+      */}
       {error && (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100">
           {error}
         </div>
       )}
 
+      {/*
+        Settings Success Banner
+        Shows short confirmation messages after successful settings updates.
+      */}
       {savedMessage && (
         <div className="flex items-center gap-2 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900 dark:border-green-900/50 dark:bg-green-950/40 dark:text-green-100">
           <CheckCircle2 className="h-4 w-4" />
@@ -573,6 +761,10 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/*
+        Profile Settings Card
+        Lets the user edit personal account details and view the account email.
+      */}
       <Card>
         <SectionHeader
           icon={<UserCircle className="h-6 w-6" />}
@@ -622,6 +814,10 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      {/*
+        Password Settings Card
+        Lets local email/password users update their password securely.
+      */}
       <Card>
         <SectionHeader
           icon={<Shield className="h-6 w-6" />}
@@ -679,6 +875,10 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      {/*
+        Appearance Settings Card
+        Controls dark mode and text size preferences stored on the device.
+      */}
       <Card>
         <SectionHeader
           icon={<SunMoon className="h-6 w-6" />}
@@ -739,6 +939,10 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      {/*
+        Accessibility Settings Card
+        Controls reading support options such as speech, contrast, and reduced motion.
+      */}
       <Card>
         <SectionHeader
           icon={<Accessibility className="h-6 w-6" />}
@@ -791,6 +995,10 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      {/*
+        Privacy and Educational Use Card
+        Reminds users what the app is for and how learning data supports the experience.
+      */}
       <Card className="bg-slate-50 dark:bg-slate-950">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
           {tx("settings.privacy.title", "Privacy and educational use")}
@@ -811,6 +1019,10 @@ export default function SettingsPage() {
         </p>
       </Card>
 
+      {/*
+        Security Actions Card
+        Groups sign-out, sign-out-all, and account deletion actions.
+      */}
       <Card>
         <SectionHeader
           icon={<Shield className="h-6 w-6" />}
@@ -848,7 +1060,6 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => {
-              // Open the delete modal and clear old delete validation messages.
               setDeletePassword("");
               setDeleteConfirmText("");
               setDeleteModalError("");
@@ -863,6 +1074,10 @@ export default function SettingsPage() {
             Delete account
           </button>
 
+          {/*
+            Delete Account Modal
+            Collects confirmation details before sending a permanent account deletion request.
+          */}
           {deleteModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
               <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
@@ -892,14 +1107,16 @@ export default function SettingsPage() {
                 )}
 
                 <div className="mt-6 space-y-4">
+                  {/*
+                    Delete Password Field
+                    Requires the current MediMind password before the delete request can continue.
+                  */}
                   <PasswordField
                     label="Current password"
                     value={deletePassword}
                     onChange={(value) => {
-                      // NEW: Update the password field.
                       setDeletePassword(value);
 
-                      // NEW: Remove the password error as soon as the user starts typing.
                       if (value.trim()) {
                         setDeletePasswordError("");
                       }
@@ -919,13 +1136,10 @@ export default function SettingsPage() {
                     <input
                       value={deleteConfirmText}
                       onChange={(event) => {
-                        // NEW: Automatically converts anything typed here into uppercase.
-                        // Example: delete becomes DELETE.
                         const upperCaseValue = event.target.value.toUpperCase();
 
                         setDeleteConfirmText(upperCaseValue);
 
-                        // NEW: Remove the DELETE error once the user types DELETE correctly.
                         if (upperCaseValue.trim() === "DELETE") {
                           setDeleteConfirmError("");
                         }
@@ -954,7 +1168,6 @@ export default function SettingsPage() {
                       setDeletePassword("");
                       setDeleteConfirmText("");
 
-                      // Clear validation errors when the user closes the modal.
                       setDeleteModalError("");
                       setDeletePasswordError("");
                       setDeleteConfirmError("");
@@ -995,6 +1208,11 @@ export default function SettingsPage() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Section Header Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function SectionHeader({
   icon,
   title,
@@ -1004,6 +1222,11 @@ function SectionHeader({
   title: string;
   description: string;
 }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="flex items-start gap-4">
       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
@@ -1022,6 +1245,11 @@ function SectionHeader({
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Input Field Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function InputField({
   label,
@@ -1050,6 +1278,11 @@ function InputField({
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Password Field Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function PasswordField({
   label,
   value,
@@ -1060,11 +1293,13 @@ function PasswordField({
   value: string;
   onChange: (value: string) => void;
 
-  // NEW: Optional error message.
-  // This keeps the old PasswordField working everywhere else,
-  // but allows the delete-account modal to show a password validation message.
   error?: string;
 }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <label className="block rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -1086,6 +1321,11 @@ function PasswordField({
     </label>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Password Rules Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function PasswordRules({ password }: { password: string }) {
   const { t } = useI18n();
@@ -1145,7 +1385,17 @@ function PasswordRules({ password }: { password: string }) {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Read Only Field Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -1158,6 +1408,11 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Setting Toggle Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function SettingToggle({
   icon,

@@ -1,19 +1,13 @@
 import type { ChatMsg } from "@/src/lib/chatApi";
 
-/**
- * Marks where a chat was created from.
- *
- * learning_workspace = chat started from Learning Workspace notes/reflection/confidence
- * direct_chat = chat started directly from Chatbots page
- */
+/* -------------------------------------------------------------------------- */
+/* Chat Session Types                                                          */
+/* These types describe saved chat sessions, including where they were created */
+/* and how backend response fields are shaped before normalisation.            */
+/* -------------------------------------------------------------------------- */
+
 export type ChatSource = "learning_workspace" | "direct_chat";
 
-/**
- * Payload used when creating a backend chat session.
- *
- * Frontend sends noteId.
- * Backend receives note_id.
- */
 export type CreateChatSessionPayload = {
   title?: string;
   messages?: ChatMsg[];
@@ -21,12 +15,6 @@ export type CreateChatSessionPayload = {
   noteId?: string | number | null;
 };
 
-/**
- * Frontend-friendly chat session type.
- *
- * Backend uses snake_case.
- * Frontend uses camelCase.
- */
 export type BackendChatSession = {
   id: string;
   title: string;
@@ -38,9 +26,6 @@ export type BackendChatSession = {
   updatedAt?: string;
 };
 
-/**
- * Raw FastAPI response shape.
- */
 type RawBackendChatSession = {
   id: string | number;
   title?: string;
@@ -60,23 +45,33 @@ type RawBackendChatSession = {
   updatedAt?: string;
 };
 
+/* -------------------------------------------------------------------------- */
+/* API Error Shape                                                             */
+/* This type represents the structured error format returned by FastAPI. The   */
+/* helper functions below use it to build readable error messages.             */
+/* -------------------------------------------------------------------------- */
+
 type ApiErrorBody = {
   detail?: string | { code?: string; message?: string; action?: string };
   message?: string;
 };
 
-/**
- * Keeps old chats safe.
- *
- * If source is missing, the frontend treats the chat as direct_chat.
- */
+/* -------------------------------------------------------------------------- */
+/* Chat Source Normalisation                                                   */
+/* Older saved chats may not include a source value. This helper keeps them    */
+/* safe by treating missing or unknown sources as direct chat sessions.        */
+/* -------------------------------------------------------------------------- */
+
 function normaliseSource(value: unknown): ChatSource {
   return value === "learning_workspace" ? "learning_workspace" : "direct_chat";
 }
 
-/**
- * Converts backend snake_case fields into frontend camelCase fields.
- */
+/* -------------------------------------------------------------------------- */
+/* Chat Session Normalisation                                                  */
+/* FastAPI may return snake_case or older camelCase fields. This helper        */
+/* converts the response into the consistent frontend BackendChatSession type. */
+/* -------------------------------------------------------------------------- */
+
 function normaliseSession(session: RawBackendChatSession): BackendChatSession {
   const rawNoteId = session.noteId ?? session.note_id ?? null;
 
@@ -93,9 +88,12 @@ function normaliseSession(session: RawBackendChatSession): BackendChatSession {
   };
 }
 
-/**
- * Safely reads JSON, plain text, or empty backend responses.
- */
+/* -------------------------------------------------------------------------- */
+/* Response Body Reader                                                        */
+/* This helper reads JSON, plain text, or empty responses from the backend so  */
+/* request handling works with both normal and no-content responses.           */
+/* -------------------------------------------------------------------------- */
+
 async function readResponseBody(res: Response): Promise<unknown> {
   const text = await res.text();
 
@@ -108,9 +106,12 @@ async function readResponseBody(res: Response): Promise<unknown> {
   }
 }
 
-/**
- * Extracts useful backend error messages.
- */
+/* -------------------------------------------------------------------------- */
+/* Error Message Builder                                                       */
+/* This function turns backend error details into readable messages for the    */
+/* chat pages, using status-specific fallbacks when needed.                    */
+/* -------------------------------------------------------------------------- */
+
 function getErrorMessage(data: unknown, status: number) {
   const errorData = data as ApiErrorBody;
   const detail = errorData.detail;
@@ -147,11 +148,12 @@ function getErrorMessage(data: unknown, status: number) {
   return `Request failed with status ${status}`;
 }
 
-/**
- * Shared fetch helper.
- *
- * All requests go through the Next.js backend proxy so cookies still work.
- */
+/* -------------------------------------------------------------------------- */
+/* Chat Sessions Fetch Helper                                                  */
+/* All chat-session requests use the Next.js backend proxy with cookies. This  */
+/* keeps authentication working while centralising response and error handling.*/
+/* -------------------------------------------------------------------------- */
+
 async function apiFetch<T>(
   path: string,
   options: RequestInit = {}
@@ -181,17 +183,23 @@ async function apiFetch<T>(
   return data as T;
 }
 
-/**
- * Gets all saved chat sessions for the logged-in user.
- */
+/* -------------------------------------------------------------------------- */
+/* List Saved Chat Sessions                                                    */
+/* Loads all saved chats for the signed-in user and normalises them before the */
+/* page displays chat history or favourites.                                  */
+/* -------------------------------------------------------------------------- */
+
 export async function listChatSessions(): Promise<BackendChatSession[]> {
   const data = await apiFetch<RawBackendChatSession[]>("/chat-sessions");
   return data.map(normaliseSession);
 }
 
-/**
- * Creates a new saved chat session.
- */
+/* -------------------------------------------------------------------------- */
+/* Create Saved Chat Session                                                   */
+/* Creates a new backend chat session, converting frontend noteId into the     */
+/* backend's expected note_id field and preserving the chat source.            */
+/* -------------------------------------------------------------------------- */
+
 export async function createBackendChatSession(
   payload: CreateChatSessionPayload
 ): Promise<BackendChatSession> {
@@ -199,10 +207,8 @@ export async function createBackendChatSession(
     title: payload.title,
     messages: payload.messages ?? [],
 
-    // Backend expects this exact source field.
     source: payload.source ?? "direct_chat",
 
-    // Backend expects snake_case note_id.
     note_id:
       payload.noteId === null ||
       payload.noteId === undefined ||
@@ -219,9 +225,12 @@ export async function createBackendChatSession(
   return normaliseSession(data);
 }
 
-/**
- * Gets one saved chat session.
- */
+/* -------------------------------------------------------------------------- */
+/* Get One Saved Chat Session                                                  */
+/* Loads one saved chat by id. This is used when opening an existing chat from */
+/* the chat list, favourites, or a direct URL.                                 */
+/* -------------------------------------------------------------------------- */
+
 export async function getBackendChatSession(
   id: string | number
 ): Promise<BackendChatSession> {
@@ -232,9 +241,12 @@ export async function getBackendChatSession(
   return normaliseSession(data);
 }
 
-/**
- * Adds one message to an existing saved chat.
- */
+/* -------------------------------------------------------------------------- */
+/* Add Message to Saved Chat                                                   */
+/* Saves one user or assistant message into an existing backend chat session   */
+/* so the conversation can be restored later.                                  */
+/* -------------------------------------------------------------------------- */
+
 export async function addBackendChatSessionMessage(
   id: string | number,
   message: ChatMsg
@@ -248,11 +260,12 @@ export async function addBackendChatSessionMessage(
   );
 }
 
-/**
- * Updates a saved chat.
- *
- * Used for rename and favourite/unfavourite.
- */
+/* -------------------------------------------------------------------------- */
+/* Update Saved Chat Session                                                   */
+/* Applies editable changes such as renaming a chat or changing its favourite  */
+/* state, then normalises the updated backend response.                        */
+/* -------------------------------------------------------------------------- */
+
 export async function updateBackendChatSession(
   id: string | number,
   patch: {
@@ -284,9 +297,12 @@ export async function updateBackendChatSession(
   return normaliseSession(data);
 }
 
-/**
- * Renames one saved chat.
- */
+/* -------------------------------------------------------------------------- */
+/* Rename Saved Chat                                                           */
+/* A small wrapper around updateBackendChatSession used when only the title    */
+/* needs to be changed.                                                       */
+/* -------------------------------------------------------------------------- */
+
 export async function renameBackendChatSession(
   id: string | number,
   title: string
@@ -294,9 +310,12 @@ export async function renameBackendChatSession(
   return updateBackendChatSession(id, { title });
 }
 
-/**
- * Adds/removes one chat from favourites.
- */
+/* -------------------------------------------------------------------------- */
+/* Toggle Chat Favourite                                                       */
+/* A small wrapper around updateBackendChatSession used when the user adds or  */
+/* removes a chat from favourites.                                             */
+/* -------------------------------------------------------------------------- */
+
 export async function toggleBackendChatSessionFavourite(
   id: string | number,
   isFavorite: boolean
@@ -304,9 +323,12 @@ export async function toggleBackendChatSessionFavourite(
   return updateBackendChatSession(id, { isFavorite });
 }
 
-/**
- * Deletes one saved chat.
- */
+/* -------------------------------------------------------------------------- */
+/* Delete Saved Chat                                                           */
+/* Removes one saved chat session from the backend and returns a simple ok     */
+/* result so pages can update their local list.                               */
+/* -------------------------------------------------------------------------- */
+
 export async function deleteBackendChatSession(
   id: string | number
 ): Promise<{ ok: true }> {

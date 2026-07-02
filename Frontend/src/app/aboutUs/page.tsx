@@ -2,7 +2,16 @@
 
 "use client";
 
-// src/app/aboutUs/page.tsx
+
+/* -------------------------------------------------------------------------- */
+/* File Overview */
+/* About Us Page. Explains the purpose, values, educational focus, and academic context behind MediMind Lite. */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Imports */
+/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
+/* -------------------------------------------------------------------------- */
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -12,19 +21,38 @@ import type { ReactNode } from "react";
 import Footer from "../../components/Footer";
 import { useI18n } from "../../i18n/I18nProvider";
 
+/* -------------------------------------------------------------------------- */
+/* Dynamic Component Loading */
+/* Loads a component on the client when server rendering would create hydration or browser-only issues. */
+/* -------------------------------------------------------------------------- */
+
 const PublicNav = dynamic(() => import("../../components/PublicNav"), {
   ssr: false,
 });
 
-/* ----------------------------- Icons ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Icon Circle Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconCircle({ children }: { children: ReactNode }) {
+  /* -------------------------------------------------------------------------- */
+  /* Rendered Interface */
+  /* Builds the visible layout using the state, handlers, and derived values prepared above. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-100 bg-blue-50 text-blue-700 dark:border-blue-500/40 dark:bg-blue-500/15 dark:text-blue-200">
       {children}
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Icon Heart Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconHeart() {
   return (
@@ -34,6 +62,11 @@ function IconHeart() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Icon Shield Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function IconShield() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -42,7 +75,17 @@ function IconShield() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Icon Book Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function IconBook() {
+  /* -------------------------------------------------------------------------- */
+  /* Rendered Interface */
+  /* Builds the visible layout using the state, handlers, and derived values prepared above. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M4 19a2 2 0 0 0 2 2h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -51,6 +94,11 @@ function IconBook() {
     </svg>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Icon Mail Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconMail() {
   return (
@@ -61,6 +109,11 @@ function IconMail() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Icon Phone Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function IconPhone() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -69,7 +122,6 @@ function IconPhone() {
   );
 }
 
-/* ----------------------------- Shared styles ----------------------------- */
 
 const pageShell =
   "min-h-screen bg-white text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-50";
@@ -86,10 +138,24 @@ const outlineButton =
 const cardBase =
   "rounded-2xl border border-slate-200 bg-white shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-900";
 
-/* ----------------------------- Page component ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Main Page Component */
+/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
+/* -------------------------------------------------------------------------- */
 
 export default function AboutUsPage() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const { t } = useI18n();
+
+  /* -------------------------------------------------------------------------- */
+  /* Tt Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   const tt = useCallback(
     (key: string, fallback: string) => {
@@ -98,6 +164,11 @@ export default function AboutUsPage() {
     },
     [t]
   );
+
+  /* -------------------------------------------------------------------------- */
+  /* Values Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
 
   const values = useMemo(
     () => [
@@ -129,11 +200,15 @@ export default function AboutUsPage() {
     [tt]
   );
 
+  /* -------------------------------------------------------------------------- */
+  /* Rendered Interface */
+  /* Builds the visible layout using the state, handlers, and derived values prepared above. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <main className={pageShell}>
       <PublicNav />
 
-      {/* Hero section */}
       <section className="mx-auto max-w-6xl px-6 pb-14 pt-12">
         <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
           <div>
@@ -176,7 +251,6 @@ export default function AboutUsPage() {
         </div>
       </section>
 
-      {/* Mission section */}
       <section className="bg-slate-50 transition-colors dark:bg-slate-900">
         <div className="mx-auto max-w-6xl px-6 py-14">
           <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
@@ -230,7 +304,6 @@ export default function AboutUsPage() {
         </div>
       </section>
 
-      {/* Values section */}
       <section className="mx-auto max-w-6xl px-6 py-14">
         <div className="text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-blue-600 dark:text-blue-200">
@@ -255,7 +328,6 @@ export default function AboutUsPage() {
         </div>
       </section>
 
-      {/* Academic project note */}
       <section className="bg-slate-50 transition-colors dark:bg-slate-900">
         <div className="mx-auto max-w-6xl px-6 py-14">
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-950">
@@ -287,7 +359,6 @@ export default function AboutUsPage() {
         </div>
       </section>
 
-      {/* Contact section */}
       <section className="mx-auto max-w-6xl px-6 py-14">
         <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
           <div>
@@ -345,7 +416,6 @@ export default function AboutUsPage() {
         </div>
       </section>
 
-      {/* Safety disclaimer */}
       <section className="bg-blue-50 transition-colors dark:bg-slate-900">
         <div className="mx-auto max-w-6xl px-6 py-10">
           <div className="rounded-2xl border border-blue-100 bg-white p-6 shadow-sm transition-colors dark:border-slate-700 dark:bg-slate-950">
@@ -363,7 +433,6 @@ export default function AboutUsPage() {
         </div>
       </section>
 
-      {/* Footer */}
       <div className="mx-auto max-w-6xl px-6 pb-12 pt-10">
         <Footer />
       </div>

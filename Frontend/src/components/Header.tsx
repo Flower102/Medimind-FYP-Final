@@ -13,7 +13,7 @@ import { useState } from "react";
 import { useI18n } from "../i18n/I18nProvider";
 import MediMindLogo from "../../MediMindLogo";
 
-// I keep tiny icons inline so I don't need extra packages.
+// keep tiny icons inline so I don't need extra packages.
 function IconUser() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -45,31 +45,31 @@ function IconChevronDown() {
 }
 
 type Props = {
-  // I allow pages to decide if search should show (e.g. maybe hide it on Terms/Privacy).
+  // Allow pages to decide if search should show (e.g. maybe hide it on Terms/Privacy).
   showSearch?: boolean;
 };
 
 export default function SiteHeader({ showSearch = true }: Props) {
   const { t, lang, setLang } = useI18n();
 
-  // I keep search local to the header (it’s UI-only for now).
+  // Keep search local to the header (it’s UI-only for now).
   const [search, setSearch] = useState("");
 
-  // I toggle the language dropdown here.
+  // Toggle the language dropdown here.
   const [langOpen, setLangOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 border-b border-gray-200 bg-[#fbfaf7]/90 backdrop-blur">
       <div className="mx-auto max-w-7xl px-6 py-4">
         <div className="grid grid-cols-3 items-center">
-          {/* I show small disclaimer text on the left */}
+          {/* show small disclaimer text on the left */}
           <div className="flex items-start gap-2 text-sm text-gray-400">
             <span className="hidden sm:inline">{t("header.support")}</span>
             <span className="hidden sm:inline">•</span>
             <span className="hidden sm:inline">{t("header.disclaimer")}</span>
           </div>
 
-          {/* I keep the brand in the center */}
+          {/* keep the brand in the center */}
           <div className="flex justify-center">
             <Link href="/" className="inline-flex items-center gap-3 hover:opacity-90">
               <MediMindLogo size={52} />
@@ -80,9 +80,9 @@ export default function SiteHeader({ showSearch = true }: Props) {
             </Link>
           </div>
 
-          {/* I keep actions on the right */}
+          {/* keep actions on the right */}
           <div className="flex items-center justify-end gap-3">
-            {/* I optionally show the search bar */}
+            {/* optionally show the search bar */}
             {showSearch && (
               <div className="hidden md:flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 shadow-sm">
                 <input
@@ -97,7 +97,7 @@ export default function SiteHeader({ showSearch = true }: Props) {
               </div>
             )}
 
-            {/* I link the user icon to sign-in */}
+            {/* link the user icon to sign-in */}
             <Link
               href="/auth/signin"
               className="rounded-full border border-gray-200 bg-white p-2 shadow-sm hover:bg-gray-50 transition"
@@ -108,7 +108,7 @@ export default function SiteHeader({ showSearch = true }: Props) {
               </span>
             </Link>
 
-            {/* I show the language dropdown here */}
+            {/* show the language dropdown here */}
             <div className="relative">
               <button
                 type="button"

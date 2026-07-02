@@ -1,20 +1,16 @@
-// File: frontend/src/app/progress/page.tsx
 
 "use client";
 
-/*
-  Progress page
 
-  This page shows:
-  - Overall learning summary
-  - A stronger motivational message
-  - A clear suggested next step
-  - Quiz score progress
-  - Confidence progress
-  - Learning goals
-  - Recent quizzes
-  - Detail popups
-*/
+/* -------------------------------------------------------------------------- */
+/* File Overview */
+/* Progress Page. Shows learning progress, quiz performance, confidence trends, goals, recent activity, and detail popups. */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Imports */
+/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
+/* -------------------------------------------------------------------------- */
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
@@ -42,9 +38,11 @@ import {
 
 import { useI18n } from "@/src/i18n/I18nProvider";
 
-/* --------------------------------
-   Reusable card
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Card Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function Card({
   children,
@@ -53,6 +51,11 @@ function Card({
   children: ReactNode;
   className?: string;
 }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div
       className={[
@@ -66,9 +69,11 @@ function Card({
   );
 }
 
-/* --------------------------------
-   Helper functions
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Get Error Message Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -76,13 +81,28 @@ function getErrorMessage(error: unknown) {
   return "Something went wrong.";
 }
 
+/* -------------------------------------------------------------------------- */
+/* Format Percent Helper */
+/* Formats values into readable text before they are shown in the interface. */
+/* -------------------------------------------------------------------------- */
+
 function formatPercent(value: number | null | undefined) {
   return `${Math.round(Number(value || 0))}%`;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Format Confidence Helper */
+/* Formats values into readable text before they are shown in the interface. */
+/* -------------------------------------------------------------------------- */
+
 function formatConfidence(value: number | null | undefined) {
   return `${Number(value || 0).toFixed(1)}/10`;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Get Score Message Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
 
 function getScoreMessage(
   score: number,
@@ -115,11 +135,18 @@ function getScoreMessage(
   );
 }
 
-/* --------------------------------
-   Main Progress page
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Main Page Component */
+/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
+/* -------------------------------------------------------------------------- */
 
 export default function ProgressPage() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const { t } = useI18n();
 
   const tx = useCallback(
@@ -130,6 +157,11 @@ export default function ProgressPage() {
     [t]
   );
 
+  /* -------------------------------------------------------------------------- */
+  /* State Values */
+  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
+  /* -------------------------------------------------------------------------- */
+
   const [summary, setSummary] = useState<ProgressSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -138,9 +170,11 @@ export default function ProgressPage() {
     "quizScores" | "confidence" | "goals" | null
   >(null);
 
-  /* --------------------------------
-     Load progress data
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Load Progress Handler */
+  /* Loads the latest backend data and updates the page state used by the interface. */
+  /* -------------------------------------------------------------------------- */
 
   const loadProgress = useCallback(async () => {
     setIsLoading(true);
@@ -157,13 +191,20 @@ export default function ProgressPage() {
     }
   }, []);
 
+  /* -------------------------------------------------------------------------- */
+  /* Side Effects */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     loadProgress();
   }, [loadProgress]);
 
-  /* --------------------------------
-     Loading state
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Conditional UI State */
+  /* Shows a focused loading, error, empty, or success view before the main interface is displayed. */
+  /* -------------------------------------------------------------------------- */
 
   if (isLoading) {
     return (
@@ -176,9 +217,11 @@ export default function ProgressPage() {
     );
   }
 
-  /* --------------------------------
-     Error state
-  -------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Conditional UI State */
+  /* Shows a focused loading, error, empty, or success view before the main interface is displayed. */
+  /* -------------------------------------------------------------------------- */
 
   if (error || !summary) {
     return (
@@ -206,9 +249,6 @@ export default function ProgressPage() {
     );
   }
 
-  /* --------------------------------
-     Derived values
-  -------------------------------- */
 
   const hasQuizScores = summary.quizScorePoints.length > 0;
   const hasConfidencePoints = summary.confidencePoints.length > 0;
@@ -233,9 +273,22 @@ export default function ProgressPage() {
     ? `/learning_workspace?noteId=${encodeURIComponent(summary.reminderNote.id)}`
     : "/learning_workspace";
 
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Progress Page Shell */
+  /* Organises the progress hero, summary cards, charts, goals, recent quizzes, and modals. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="space-y-8 pb-10">
-      {/* Hero header */}
+      {/*
+        Progress Hero Header
+        Introduces the progress page and gives the user a refresh control.
+      */}
       <div className="overflow-hidden rounded-3xl border border-blue-200 bg-linear-to-r from-blue-600 via-blue-600 to-indigo-700 p-6 text-white shadow-sm">
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           <div>
@@ -266,7 +319,10 @@ export default function ProgressPage() {
         </div>
       </div>
 
-      {/* Main summary cards */}
+      {/*
+        Progress Summary Cards
+        Displays the main counts and averages that summarise the user’s learning activity.
+      */}
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard
           icon={<BookOpen className="h-5 w-5" />}
@@ -303,7 +359,6 @@ export default function ProgressPage() {
         />
       </div>
 
-      {/* Motivation and suggested next step */}
       <Card className="bg-slate-50 p-7 dark:bg-slate-950">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
@@ -359,7 +414,14 @@ export default function ProgressPage() {
         </div>
       </Card>
 
-      {/* Learning insight */}
+      {/*
+        Recent Quiz History Card
+        Lists recent completed quizzes so the user can review results and learning patterns.
+      */}
+      {/*
+        Learning Goals Card
+        Shows progress toward goals so the user can see what to focus on next.
+      */}
       <Card>
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
@@ -378,7 +440,10 @@ export default function ProgressPage() {
         </div>
       </Card>
 
-      {/* Charts */}
+      {/*
+        Progress Charts Grid
+        Places quiz score progress and confidence progress next to each other.
+      */}
       <div className="grid gap-6 lg:grid-cols-2">
         <ProgressPreviewCard
           title={tx("progress.quizScores.title", "Quiz scores over time")}
@@ -427,8 +492,11 @@ export default function ProgressPage() {
         </ProgressPreviewCard>
       </div>
 
-      {/* Goals and snapshot */}
       <div className="grid gap-6 lg:grid-cols-2">
+        {/*
+          Recent Quizzes Card
+          Lists recent quiz attempts and links to review pages.
+        */}
         <Card>
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4">
@@ -532,7 +600,6 @@ export default function ProgressPage() {
         </Card>
       </div>
 
-      {/* Recent quizzes */}
       <Card>
         <div>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-50">
@@ -584,7 +651,10 @@ export default function ProgressPage() {
         </div>
       </Card>
 
-      {/* Quiz score modal */}
+      {/*
+        Quiz Scores Detail Modal
+        Explains quiz score progress in more detail when the user opens the popup.
+      */}
       {openModal === "quizScores" && (
         <ProgressDetailModal
           title={tx("progress.quizScores.modalTitle", "Quiz scores over time")}
@@ -620,7 +690,10 @@ export default function ProgressPage() {
         </ProgressDetailModal>
       )}
 
-      {/* Confidence modal */}
+      {/*
+        Confidence Detail Modal
+        Explains confidence progress and what the rating means for learning.
+      */}
       {openModal === "confidence" && (
         <ProgressDetailModal
           title={tx("progress.confidence.modalTitle", "Confidence over time")}
@@ -655,7 +728,10 @@ export default function ProgressPage() {
         </ProgressDetailModal>
       )}
 
-      {/* Goals modal */}
+      {/*
+        Goals Detail Modal
+        Explains the learning goals and how each one is calculated.
+      */}
       {openModal === "goals" && (
         <ProgressDetailModal
           title={tx("progress.goals.modalTitle", "Learning goals")}
@@ -672,9 +748,11 @@ export default function ProgressPage() {
   );
 }
 
-/* --------------------------------
-   Main stat cards
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Stat Card Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function StatCard({
   icon,
@@ -687,6 +765,11 @@ function StatCard({
   value: ReactNode;
   helper: string;
 }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <Card>
       <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-300">
@@ -706,9 +789,11 @@ function StatCard({
   );
 }
 
-/* --------------------------------
-   Preview cards
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Progress Preview Card Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function ProgressPreviewCard({
   title,
@@ -764,9 +849,11 @@ function ProgressPreviewCard({
   );
 }
 
-/* --------------------------------
-   Snapshot cards
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Insight Mini Card Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function InsightMiniCard({
   label,
@@ -777,6 +864,11 @@ function InsightMiniCard({
   value: ReactNode;
   description: string;
 }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
       <div className="text-sm font-medium text-slate-500">{label}</div>
@@ -790,9 +882,11 @@ function InsightMiniCard({
   );
 }
 
-/* --------------------------------
-   Empty state
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Empty State Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function EmptyState({ message }: { message: string }) {
   return (
@@ -802,9 +896,11 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
-/* --------------------------------
-   Goals list
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Learning Goals List Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function LearningGoalsList({
   goals,
@@ -885,9 +981,11 @@ function LearningGoalsList({
   );
 }
 
-/* --------------------------------
-   Detail modal
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Progress Detail Modal Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function ProgressDetailModal({
   title,
@@ -900,6 +998,11 @@ function ProgressDetailModal({
   children: ReactNode;
   onClose: () => void;
 }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6"
@@ -937,9 +1040,11 @@ function ProgressDetailModal({
   );
 }
 
-/* --------------------------------
-   Charts
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Simple Bar Chart Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function SimpleBarChart({
   points,
@@ -1000,6 +1105,11 @@ function SimpleBarChart({
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Simple Line Chart Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function SimpleLineChart({
   points,
   maxValue,
@@ -1007,6 +1117,11 @@ function SimpleLineChart({
   points: { label: string; value: number }[];
   maxValue: number;
 }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="rounded-2xl bg-slate-50 p-5 dark:bg-slate-950">
       <div className="space-y-3">
@@ -1037,9 +1152,11 @@ function SimpleLineChart({
   );
 }
 
-/* --------------------------------
-   Detail tables
--------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Quiz Scores Table Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function QuizScoresTable({
   quizzes,
@@ -1116,6 +1233,11 @@ function QuizScoresTable({
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Confidence Table Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function ConfidenceTable({
   points,
   tx,
@@ -1123,6 +1245,11 @@ function ConfidenceTable({
   points: { label: string; value: number }[];
   tx: (key: string, fallback: string) => string;
 }) {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
       <table className="w-full text-left text-sm">

@@ -10,18 +10,37 @@ It now returns clearer backend error details:
 - action: suggested next step for the user/developer
 """
 
+# ---------------------------------------------------------------------
+# Imports and Shared Dependencies
+# ---------------------------------------------------------------------
+# This section imports FastAPI security tools, database access, and user models.
+# These imports support authentication checks across protected API routes.
+# ---------------------------------------------------------------------
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from .db import get_db
-from .models import User
+from .models import User 
 from .settings import settings
 from .security import decode_and_validate
 
+
+# ---------------------------------------------------------------------
+# Bearer Token Setup
+# ---------------------------------------------------------------------
+# This section creates an optional bearer-token reader for Swagger and API testing.
+# The frontend usually uses cookies, but this also supports Authorization headers.
+# ---------------------------------------------------------------------
 bearer = HTTPBearer(auto_error=False)
 
 
+# ---------------------------------------------------------------------
+# Shared API Error Helper
+# ---------------------------------------------------------------------
+# This helper raises backend errors in one consistent shape.
+# It lets the frontend show clear messages without guessing what went wrong.
+# ---------------------------------------------------------------------
 def raise_api_error(status_code: int, code: str, message: str, action: str):
     """
     Raises an API error in a consistent structure.
@@ -40,6 +59,12 @@ def raise_api_error(status_code: int, code: str, message: str, action: str):
     )
 
 
+# ---------------------------------------------------------------------
+# Current User Dependency
+# ---------------------------------------------------------------------
+# This dependency validates the user's access token and loads their account.
+# Protected routes use it to make sure users only access their own data.
+# ---------------------------------------------------------------------
 def get_current_user(
     request: Request,
     creds: HTTPAuthorizationCredentials = Depends(bearer),
@@ -93,4 +118,4 @@ def get_current_user(
             "Please sign out, then sign in again with a valid account.",
         )
 
-    return user
+    return user 

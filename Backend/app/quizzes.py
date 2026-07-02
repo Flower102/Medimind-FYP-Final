@@ -23,6 +23,13 @@
 #
 # So those routes MUST exist here.
 
+# ---------------------------------------------------------------------
+# Imports and Quiz Router Setup
+# ---------------------------------------------------------------------
+# This section imports AI, database, authentication, and validation tools for quiz features.
+# The router groups the full quiz generation, answer, and submission flow.
+# ---------------------------------------------------------------------
+
 from __future__ import annotations
 
 import json
@@ -40,6 +47,13 @@ from .settings import settings
 from . import models
 
 router = APIRouter(prefix="/quizzes", tags=["Quizzes"])
+
+# ---------------------------------------------------------------------
+# Shared API Error Helper
+# ---------------------------------------------------------------------
+# This helper raises backend errors in a consistent shape.
+# It helps the frontend show clear messages and suggested actions.
+# ---------------------------------------------------------------------
 
 def raise_api_error(status_code: int, code: str, message: str, action: str):
     """
@@ -64,6 +78,13 @@ def raise_api_error(status_code: int, code: str, message: str, action: str):
 # Pydantic helper
 # -------------------------
 
+# ---------------------------------------------------------------------
+# Camel/Snake Case Compatibility Model
+# ---------------------------------------------------------------------
+# This base schema accepts both camelCase and snake_case field names.
+# It reduces frontend/backend naming mismatch problems.
+# ---------------------------------------------------------------------
+
 class CamelModel(BaseModel):
     """
     Allows the backend to accept both styles:
@@ -81,6 +102,13 @@ class CamelModel(BaseModel):
 # -------------------------
 # Request schemas
 # -------------------------
+
+# ---------------------------------------------------------------------
+# Quiz Generation Request Schema
+# ---------------------------------------------------------------------
+# This schema validates the request to generate a quiz from a saved note.
+# It controls question count, reveal mode, timer settings, and note id.
+# ---------------------------------------------------------------------
 
 class QuizGenerateIn(CamelModel):
     # Frontend may send noteId, backend can also accept note_id.
@@ -112,6 +140,13 @@ class QuizGenerateIn(CamelModel):
     )
 
 
+# ---------------------------------------------------------------------
+# Single Answer Request Schema
+# ---------------------------------------------------------------------
+# This schema validates one selected answer during a quiz.
+# It keeps question ids and option indexes within expected values.
+# ---------------------------------------------------------------------
+
 class QuizAnswerIn(CamelModel):
     # Frontend may send questionId.
     question_id: int = Field(alias="questionId")
@@ -120,11 +155,25 @@ class QuizAnswerIn(CamelModel):
     selected_option_index: int = Field(alias="selectedOptionIndex", ge=0, le=3)
 
 
+# ---------------------------------------------------------------------
+# Submit Answer Schema
+# ---------------------------------------------------------------------
+# This schema supports submitting answers as part of final quiz submission.
+# It keeps the backend flexible if the frontend sends all answers together.
+# ---------------------------------------------------------------------
+
 class QuizSubmitAnswerIn(CamelModel):
     # Optional: used only if frontend submits all answers at the end.
     question_id: int = Field(alias="questionId")
     selected_option_index: int = Field(alias="selectedOptionIndex", ge=0, le=3)
 
+
+# ---------------------------------------------------------------------
+# Quiz Submission Schema
+# ---------------------------------------------------------------------
+# This schema validates the final quiz submission payload.
+# It can include saved answers and the time taken by the user.
+# ---------------------------------------------------------------------
 
 class QuizSubmitIn(CamelModel):
     # Optional list. Your current frontend saves answers one-by-one,
@@ -139,12 +188,26 @@ class QuizSubmitIn(CamelModel):
 # AI generated quiz schemas
 # -------------------------
 
+# ---------------------------------------------------------------------
+# Generated Question Schema
+# ---------------------------------------------------------------------
+# This schema validates one AI-generated quiz question.
+# It ensures each question has options, the correct answer index, and an explanation.
+# ---------------------------------------------------------------------
+
 class GeneratedQuestion(BaseModel):
     question: str
     options: list[str]
     correct_option_index: int
     explanation: str
 
+
+# ---------------------------------------------------------------------
+# Generated Quiz Schema
+# ---------------------------------------------------------------------
+# This schema validates the full quiz returned by the AI.
+# It is checked before the quiz is saved to the database.
+# ---------------------------------------------------------------------
 
 class GeneratedQuiz(BaseModel):
     title: str
@@ -154,6 +217,13 @@ class GeneratedQuiz(BaseModel):
 # -------------------------
 # Validation helpers
 # -------------------------
+
+# ---------------------------------------------------------------------
+# Question Count Validation
+# ---------------------------------------------------------------------
+# This helper only allows supported quiz lengths.
+# It keeps the frontend options and backend behaviour aligned.
+# ---------------------------------------------------------------------
 
 def validate_question_count(question_count: int) -> None:
     """
@@ -169,6 +239,13 @@ def validate_question_count(question_count: int) -> None:
             "Please choose 10, 15, or 20 questions and try again.",
         )
 
+
+# ---------------------------------------------------------------------
+# Quiz Attempt Ownership Loader
+# ---------------------------------------------------------------------
+# This helper loads a quiz attempt belonging to the current user.
+# It prevents users from accessing another account’s quiz attempt.
+# ---------------------------------------------------------------------
 
 def get_attempt_or_404(
     db: Session,
@@ -200,6 +277,13 @@ def get_attempt_or_404(
 
     return attempt
 
+
+# ---------------------------------------------------------------------
+# Quiz Question Loader
+# ---------------------------------------------------------------------
+# This helper loads a question from the current quiz attempt.
+# It prevents answers being saved against the wrong quiz.
+# ---------------------------------------------------------------------
 
 def get_question_or_404(
     db: Session,
@@ -234,6 +318,13 @@ def get_question_or_404(
 # -------------------------
 # Response helpers
 # -------------------------
+
+# ---------------------------------------------------------------------
+# Quiz Question Response Builder
+# ---------------------------------------------------------------------
+# This helper converts a database quiz question into frontend JSON.
+# It hides or reveals correct answers depending on quiz state and reveal mode.
+# ---------------------------------------------------------------------
 
 def quiz_question_to_dict(
     attempt: models.QuizAttempt,
@@ -271,6 +362,13 @@ def quiz_question_to_dict(
     }
 
 
+# ---------------------------------------------------------------------
+# Quiz Attempt Response Builder
+# ---------------------------------------------------------------------
+# This helper converts a full quiz attempt into frontend JSON.
+# It includes timing, score, completion state, and question data.
+# ---------------------------------------------------------------------
+
 def quiz_attempt_to_dict(attempt: models.QuizAttempt) -> dict:
     """
     Converts the whole quiz attempt into the shape used by the frontend.
@@ -296,6 +394,13 @@ def quiz_attempt_to_dict(attempt: models.QuizAttempt) -> dict:
     }
 
 
+# ---------------------------------------------------------------------
+# Quiz Summary Response Builder
+# ---------------------------------------------------------------------
+# This helper creates a smaller quiz-history response.
+# It is useful for lists where full question data is not needed.
+# ---------------------------------------------------------------------
+
 def quiz_summary_to_dict(attempt: models.QuizAttempt) -> dict:
     """
     Smaller response for the quiz history/list page.
@@ -318,6 +423,13 @@ def quiz_summary_to_dict(attempt: models.QuizAttempt) -> dict:
 # -------------------------
 # OpenAI helpers
 # -------------------------
+
+# ---------------------------------------------------------------------
+# OpenAI Text Extractor
+# ---------------------------------------------------------------------
+# This helper reads text from different OpenAI Responses API shapes.
+# It supports both output_text and nested output content.
+# ---------------------------------------------------------------------
 
 def extract_openai_text(data: dict[str, Any]) -> str:
     """
@@ -343,6 +455,13 @@ def extract_openai_text(data: dict[str, Any]) -> str:
 
     return "\n".join(text_parts).strip()
 
+
+# ---------------------------------------------------------------------
+# AI Quiz Parser
+# ---------------------------------------------------------------------
+# This helper validates and cleans the AI-generated quiz JSON.
+# It makes sure every question has exactly four options before saving.
+# ---------------------------------------------------------------------
 
 def parse_ai_quiz(raw_text: str, expected_count: int) -> GeneratedQuiz:
     """
@@ -412,6 +531,13 @@ def parse_ai_quiz(raw_text: str, expected_count: int) -> GeneratedQuiz:
 
     return generated 
 
+
+# ---------------------------------------------------------------------
+# AI Quiz Generation Helper
+# ---------------------------------------------------------------------
+# This helper sends a saved note to OpenAI and asks for a quiz.
+# It retries once if the AI returns invalid quiz JSON.
+# ---------------------------------------------------------------------
 
 async def generate_quiz_with_ai(
     note: models.Note,
@@ -557,6 +683,13 @@ No question can have fewer or more than 4 options.
 # Routes
 # -------------------------
 
+# ---------------------------------------------------------------------
+# List Quizzes Route
+# ---------------------------------------------------------------------
+# This route returns quiz attempts for the signed-in user.
+# It supports quiz history and progress screens.
+# ---------------------------------------------------------------------
+
 @router.get("")
 def list_quizzes(
     db: Session = Depends(get_db),
@@ -576,6 +709,13 @@ def list_quizzes(
 
     return [quiz_summary_to_dict(attempt) for attempt in attempts]
 
+
+# ---------------------------------------------------------------------
+# Generate Quiz Route
+# ---------------------------------------------------------------------
+# This route creates a new quiz attempt from a saved note.
+# It validates ownership, calls AI, and stores the attempt and questions.
+# ---------------------------------------------------------------------
 
 @router.post("/generate", status_code=status.HTTP_201_CREATED)
 async def generate_quiz(
@@ -653,6 +793,13 @@ async def generate_quiz(
     return quiz_attempt_to_dict(attempt)
 
 
+# ---------------------------------------------------------------------
+# Get Quiz Attempt Route
+# ---------------------------------------------------------------------
+# This route loads a saved quiz attempt for the frontend quiz page.
+# It returns questions in the correct review or active state.
+# ---------------------------------------------------------------------
+
 @router.get("/{attempt_id}")
 def get_quiz_attempt(
     attempt_id: int,
@@ -669,6 +816,13 @@ def get_quiz_attempt(
     attempt = get_attempt_or_404(db, attempt_id, current_user)
     return quiz_attempt_to_dict(attempt)
 
+
+# ---------------------------------------------------------------------
+# Answer Quiz Question Function
+# ---------------------------------------------------------------------
+# This section contains the answer_quiz_question function.
+# It keeps this important part of the module separated and easier to review later.
+# ---------------------------------------------------------------------
 
 @router.post("/{attempt_id}/answer")
 def answer_quiz_question(
@@ -719,6 +873,13 @@ def answer_quiz_question(
         "explanation": question.explanation if reveal_answer else None,
     }
 
+
+# ---------------------------------------------------------------------
+# Submit Quiz Attempt Function
+# ---------------------------------------------------------------------
+# This section contains the submit_quiz_attempt function.
+# It keeps this important part of the module separated and easier to review later.
+# ---------------------------------------------------------------------
 
 @router.post("/{attempt_id}/submit")
 def submit_quiz_attempt(
@@ -791,6 +952,13 @@ def submit_quiz_attempt(
     return quiz_attempt_to_dict(attempt)
 
 
+# ---------------------------------------------------------------------
+# Get Quiz Result Function
+# ---------------------------------------------------------------------
+# This section contains the get_quiz_result function.
+# It keeps this important part of the module separated and easier to review later.
+# ---------------------------------------------------------------------
+
 @router.get("/{attempt_id}/result")
 def get_quiz_result(
     attempt_id: int,
@@ -813,6 +981,13 @@ def get_quiz_result(
 
     return quiz_attempt_to_dict(attempt)
 
+
+# ---------------------------------------------------------------------
+# Delete Quiz Attempt Function
+# ---------------------------------------------------------------------
+# This section contains the delete_quiz_attempt function.
+# It keeps this important part of the module separated and easier to review later.
+# ---------------------------------------------------------------------
 
 @router.delete("/{attempt_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_quiz_attempt(
@@ -842,6 +1017,13 @@ def delete_quiz_attempt(
 #
 # Your current frontend should use the shorter routes above.
 
+# ---------------------------------------------------------------------
+# Get Quiz Attempt Old Path Function
+# ---------------------------------------------------------------------
+# This section contains the get_quiz_attempt_old_path function.
+# It keeps this important part of the module separated and easier to review later.
+# ---------------------------------------------------------------------
+
 @router.get("/attempts/{attempt_id}")
 def get_quiz_attempt_old_path(
     attempt_id: int,
@@ -851,6 +1033,13 @@ def get_quiz_attempt_old_path(
     attempt = get_attempt_or_404(db, attempt_id, current_user)
     return quiz_attempt_to_dict(attempt)
 
+
+# ---------------------------------------------------------------------
+# Answer Quiz Question Old Path Function
+# ---------------------------------------------------------------------
+# This section contains the answer_quiz_question_old_path function.
+# It keeps this important part of the module separated and easier to review later.
+# ---------------------------------------------------------------------
 
 @router.post("/attempts/{attempt_id}/answer")
 def answer_quiz_question_old_path(
@@ -862,6 +1051,13 @@ def answer_quiz_question_old_path(
     return answer_quiz_question(attempt_id, payload, db, current_user)
 
 
+# ---------------------------------------------------------------------
+# Submit Quiz Attempt Old Path Function
+# ---------------------------------------------------------------------
+# This section contains the submit_quiz_attempt_old_path function.
+# It keeps this important part of the module separated and easier to review later.
+# ---------------------------------------------------------------------
+
 @router.post("/attempts/{attempt_id}/submit")
 def submit_quiz_attempt_old_path(
     attempt_id: int,
@@ -872,6 +1068,13 @@ def submit_quiz_attempt_old_path(
     return submit_quiz_attempt(attempt_id, payload, db, current_user)
 
 
+# ---------------------------------------------------------------------
+# Get Quiz Result Old Path Function
+# ---------------------------------------------------------------------
+# This section contains the get_quiz_result_old_path function.
+# It keeps this important part of the module separated and easier to review later.
+# ---------------------------------------------------------------------
+
 @router.get("/attempts/{attempt_id}/result")
 def get_quiz_result_old_path(
     attempt_id: int,
@@ -880,6 +1083,13 @@ def get_quiz_result_old_path(
 ):
     return get_quiz_result(attempt_id, db, current_user)
 
+
+# ---------------------------------------------------------------------
+# Delete Quiz Attempt Old Path Function
+# ---------------------------------------------------------------------
+# This section contains the delete_quiz_attempt_old_path function.
+# It keeps this important part of the module separated and easier to review later.
+# ---------------------------------------------------------------------
 
 @router.delete("/attempts/{attempt_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_quiz_attempt_old_path(

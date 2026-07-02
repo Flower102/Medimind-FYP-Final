@@ -1,20 +1,36 @@
 "use client";
 
-// src/app/auth/signin/page.tsx
-// I keep this page self-contained so the sign-in page has its own three-dot settings menu.
+
+/* -------------------------------------------------------------------------- */
+/* File Overview */
+/* Sign In Page. Handles user sign-in, Google sign-in links, validation feedback, language options, theme controls, and mascot behaviour. */
+/* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Imports */
+/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
+/* -------------------------------------------------------------------------- */
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 
-import ReactiveMascot, { FocusMode } from "../../../components/ReactiveMascot";
 import MediMindLogo from "../../../../MediMindLogo";
 import { useI18n } from "../../../i18n/I18nProvider";
 import LanguageSwitcher from "../../../components/LanguageSwitcher";
 
-/* ----------------------------- Menu icons ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Icon Dots Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconDots() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <circle cx="5" cy="12" r="1.7" fill="currentColor" />
@@ -23,6 +39,11 @@ function IconDots() {
     </svg>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Icon Moon Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
 
 function IconMoon() {
   return (
@@ -37,7 +58,17 @@ function IconMoon() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Icon Sun Icon */
+/* Renders a small reusable SVG or icon wrapper used to keep the page visuals consistent. */
+/* -------------------------------------------------------------------------- */
+
 function IconSun() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
@@ -55,17 +86,31 @@ function IconSun() {
   );
 }
 
-/* ----------------------------- Shared helpers ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Safe Text Helper */
+/* Keeps validation, detection, or text-cleaning logic separate from the main render code. */
+/* -------------------------------------------------------------------------- */
 
 function safeText(value: string, key: string, fallback: string) {
   if (!value || value === key) return fallback;
   return value;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Apply Dark Mode Helper */
+/* Connects browser-level settings or events to the React component state. */
+/* -------------------------------------------------------------------------- */
+
 function applyDarkMode(isDark: boolean) {
   document.documentElement.classList.toggle("dark", isDark);
   document.documentElement.style.colorScheme = isDark ? "dark" : "light";
 }
+
+/* -------------------------------------------------------------------------- */
+/* Subscribe To Dark Mode Helper */
+/* Connects browser-level settings or events to the React component state. */
+/* -------------------------------------------------------------------------- */
 
 function subscribeToDarkMode(callback: () => void) {
   window.addEventListener("storage", callback);
@@ -77,36 +122,67 @@ function subscribeToDarkMode(callback: () => void) {
   };
 }
 
+/* -------------------------------------------------------------------------- */
+/* Get Dark Mode Snapshot Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
+
 function getDarkModeSnapshot() {
   if (typeof window === "undefined") return false;
   return window.localStorage.getItem("mm_dark") === "1";
 }
 
+/* -------------------------------------------------------------------------- */
+/* Get Dark Mode Server Snapshot Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
+
 function getDarkModeServerSnapshot() {
   return false;
 }
 
-/* ----------------------------- Three-dot settings menu ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Auth Settings Menu Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function AuthSettingsMenu() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const { t } = useI18n();
+
+  /* -------------------------------------------------------------------------- */
+  /* State Values */
+  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
+  /* -------------------------------------------------------------------------- */
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  // I read the saved theme without calling setState inside an effect.
   const dark = useSyncExternalStore(
     subscribeToDarkMode,
     getDarkModeSnapshot,
     getDarkModeServerSnapshot
   );
 
-  // I keep the document class synced with the saved theme.
+  /* -------------------------------------------------------------------------- */
+  /* Side Effects */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     applyDarkMode(dark);
   }, [dark]);
 
-  // I close the dropdown when I click outside it.
+  /* -------------------------------------------------------------------------- */
+  /* Additional Side Effect */
+  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
+  /* -------------------------------------------------------------------------- */
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (!menuRef.current) return;
@@ -123,6 +199,11 @@ function AuthSettingsMenu() {
     };
   }, []);
 
+  /* -------------------------------------------------------------------------- */
+  /* Toggle Dark Mode Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
+
   function toggleDarkMode() {
     const nextDark = !dark;
 
@@ -132,6 +213,11 @@ function AuthSettingsMenu() {
 
     setMenuOpen(false);
   }
+
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
 
   return (
     <div className="relative" ref={menuRef}>
@@ -147,7 +233,6 @@ function AuthSettingsMenu() {
 
       {menuOpen && (
         <div className="absolute right-0 mt-3 w-64 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl transition-colors dark:border-slate-700 dark:bg-slate-900">
-          {/* I keep the home link at the top of the menu. */}
           <Link
             href="/"
             onClick={() => setMenuOpen(false)}
@@ -156,7 +241,6 @@ function AuthSettingsMenu() {
             {safeText(t("nav.home"), "nav.home", "Home")}
           </Link>
 
-          {/* I keep the theme toggle below home. */}
           <button
             type="button"
             onClick={toggleDarkMode}
@@ -175,12 +259,15 @@ function AuthSettingsMenu() {
 
           <div className="my-2 border-t border-slate-100 dark:border-slate-700" />
 
-          {/* I keep the language switcher inside the menu. */}
           <div className="rounded-xl px-4 py-3">
             <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-300">
               {safeText(t("language.label"), "language.label", "Language")}
             </div>
 
+            {/*
+              Language Selector
+              Lets the user change language from the authentication page.
+            */}
             <LanguageSwitcher />
           </div>
         </div>
@@ -189,7 +276,11 @@ function AuthSettingsMenu() {
   );
 }
 
-/* ----------------------------- Validation helpers ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Validate Email Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
 
 function validateEmail(email: string) {
   const value = email.trim();
@@ -202,6 +293,11 @@ function validateEmail(email: string) {
   return "";
 }
 
+/* -------------------------------------------------------------------------- */
+/* Validate Password Function */
+/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
+/* -------------------------------------------------------------------------- */
+
 function validatePassword(password: string) {
   if (!password) return "Please enter your password.";
   if (password.length < 8) {
@@ -210,6 +306,11 @@ function validatePassword(password: string) {
 
   return "";
 }
+
+/* -------------------------------------------------------------------------- */
+/* Get Signin Error Message Helper */
+/* Reads or derives a specific value so the main component can stay easier to follow. */
+/* -------------------------------------------------------------------------- */
 
 function getSigninErrorMessage(code: string) {
   switch (code) {
@@ -254,17 +355,30 @@ function getSigninErrorMessage(code: string) {
   }
 }
 
-/* ----------------------------- Page component ----------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Main Page Component */
+/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
+/* -------------------------------------------------------------------------- */
 
 export default function SignInPage() {
+  /* -------------------------------------------------------------------------- */
+  /* Component Setup */
+  /* Initialises routing, translations, refs, or other page-level services used by the component. */
+  /* -------------------------------------------------------------------------- */
+
   const { t } = useI18n();
   const router = useRouter();
+
+  /* -------------------------------------------------------------------------- */
+  /* State Values */
+  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
+  /* -------------------------------------------------------------------------- */
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [showPassword, setShowPassword] = useState(false);
-  const [focusMode, setFocusMode] = useState<FocusMode>("none");
 
   const [touched, setTouched] = useState({
     email: false,
@@ -275,17 +389,26 @@ export default function SignInPage() {
   const [showSignupButton, setShowSignupButton] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  /* -------------------------------------------------------------------------- */
+  /* Email Error Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
+
   const emailError = useMemo(
     () => (touched.email ? validateEmail(email) : ""),
     [email, touched.email]
   );
+
+  /* -------------------------------------------------------------------------- */
+  /* Password Error Derived Value */
+  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
+  /* -------------------------------------------------------------------------- */
 
   const passwordError = useMemo(
     () => (touched.password ? validatePassword(password) : ""),
     [password, touched.password]
   );
 
-  // I keep the input styles dark-mode friendly.
   const inputBase =
     "mt-2 w-full rounded-xl border bg-white px-4 py-3 text-gray-900 outline-none transition-colors focus:ring-2 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500";
 
@@ -294,6 +417,11 @@ export default function SignInPage() {
 
   const badBorder =
     "border-red-300 focus:ring-red-600 dark:border-red-500 dark:focus:ring-red-400";
+
+  /* -------------------------------------------------------------------------- */
+  /* Validate All Handler */
+  /* Keeps this component action separate so the render section stays easier to read. */
+  /* -------------------------------------------------------------------------- */
 
   function validateAll() {
     const errors: string[] = [];
@@ -306,6 +434,11 @@ export default function SignInPage() {
 
     return errors;
   }
+
+  /* -------------------------------------------------------------------------- */
+  /* On Submit Handler */
+  /* Handles this user action and keeps the backend data and visible UI in sync. */
+  /* -------------------------------------------------------------------------- */
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -373,15 +506,27 @@ export default function SignInPage() {
     }
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Component Markup */
+  /* Renders the visible UI for this specific component or page section. */
+  /* -------------------------------------------------------------------------- */
+
+  /* -------------------------------------------------------------------------- */
+  /* Authentication Page Shell */
+  /* Wraps the authentication screen with the page background and responsive layout. */
+  /* -------------------------------------------------------------------------- */
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6 transition-colors dark:bg-slate-950">
       <div className="relative grid w-full max-w-5xl grid-cols-1 overflow-hidden rounded-3xl border border-slate-200 bg-white text-gray-700 shadow-lg transition-colors dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 md:grid-cols-2">
-        {/* I replaced the old ENG button with the three-dot menu. */}
         <div className="absolute right-6 top-6 z-20">
+          {/*
+            Authentication Settings Menu
+            Provides theme and language controls without leaving the auth page.
+          */}
           <AuthSettingsMenu />
         </div>
 
-        {/* I keep the left panel for the logo and mascot. */}
         <section className="flex flex-col justify-between bg-gray-100 p-10 transition-colors dark:bg-slate-950">
           <div>
             <Link href="/" className="inline-flex items-center gap-3 hover:opacity-90">
@@ -401,10 +546,6 @@ export default function SignInPage() {
             </div>
           </div>
 
-          <div className="mt-10">
-            <ReactiveMascot focusMode={focusMode} />
-          </div>
-
           <div className="mt-8 text-xs text-gray-500 dark:text-slate-400">
             {safeText(
               t("auth.disclaimer"),
@@ -414,7 +555,6 @@ export default function SignInPage() {
           </div>
         </section>
 
-        {/* I keep the right panel for the sign-in form. */}
         <section className="p-10">
           <h1 className="text-4xl font-semibold text-gray-900 dark:text-white">
             {safeText(t("signin.title"), "signin.title", "Welcome back!")}
@@ -452,8 +592,11 @@ export default function SignInPage() {
             </div>
           )}
 
+          {/*
+            Authentication Form
+            Collects the user details needed for this authentication step.
+          */}
           <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate>
-            {/* I keep the email field here. */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
                 {safeText(t("common.email"), "common.email", "Email")}
@@ -473,7 +616,7 @@ export default function SignInPage() {
                   setShowSignupButton(false);
                 }}
                 onBlur={() => setTouched((x) => ({ ...x, email: true }))}
-                onFocus={() => setFocusMode("email")}
+            
                 className={`${inputBase} ${emailError ? badBorder : okBorder}`}
               />
 
@@ -484,7 +627,6 @@ export default function SignInPage() {
               )}
             </div>
 
-            {/* I keep the password field here. */}
             <div>
               <div className="flex items-center justify-between">
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
@@ -514,7 +656,6 @@ export default function SignInPage() {
                     setShowSignupButton(false);
                   }}
                   onBlur={() => setTouched((x) => ({ ...x, password: true }))}
-                  onFocus={() => setFocusMode("password")}
                   className={`${inputBase} pr-12 ${
                     passwordError ? badBorder : okBorder
                   }`}
@@ -541,7 +682,6 @@ export default function SignInPage() {
               )}
             </div>
 
-            {/* I keep the submit button here. */}
             <button
               type="submit"
               disabled={busy}
@@ -552,7 +692,6 @@ export default function SignInPage() {
                 : safeText(t("signin.submit"), "signin.submit", "Log in")}
             </button>
 
-            {/* I keep the Google login section here. */}
             <div className="mt-6">
               <div className="flex items-center gap-5">
                 <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
@@ -597,7 +736,6 @@ export default function SignInPage() {
               </button>
             </div>
 
-            {/* I use router.push here so the sign-up navigation is direct. */}
             <p className="mt-6 text-center text-sm text-gray-600 dark:text-slate-300">
               {safeText(t("signin.noAccount"), "signin.noAccount", "Don’t have an account?")}{" "}
               <button
