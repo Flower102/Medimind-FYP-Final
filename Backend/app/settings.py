@@ -4,7 +4,6 @@ from pathlib import Path as FilePath
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 BASE_DIR = FilePath(__file__).resolve().parent.parent
 ENV_PATH = BASE_DIR / ".env"
 
