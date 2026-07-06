@@ -1,15 +1,5 @@
 "use client";
 
-/* -------------------------------------------------------------------------- */
-/* File Overview */
-/* Favourites Page. Combines favourite notes and favourite AI chats so important saved learning items are easy to revisit. */
-/* -------------------------------------------------------------------------- */
-
-/* -------------------------------------------------------------------------- */
-/* Imports */
-/* Brings in React, Next.js utilities, shared components, icons, and API helpers used by this file. */
-/* -------------------------------------------------------------------------- */
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
@@ -33,11 +23,6 @@ import {
 import { listNotes, updateNote, type Note } from "@/src/lib/notesApi";
 import { useI18n } from "@/src/i18n/I18nProvider";
 
-/* -------------------------------------------------------------------------- */
-/* Type Definitions */
-/* Defines the data shapes used for props, API responses, form values, and page state. */
-/* -------------------------------------------------------------------------- */
-
 type FavouriteTab = "notes" | "chats";
 
 type FavouriteNote = Note & {
@@ -51,29 +36,23 @@ type FavouriteNote = Note & {
   updated_at?: string;
 };
 
-/* -------------------------------------------------------------------------- */
-/* Is Note Favourite Helper */
-/* Keeps validation, detection, or text-cleaning logic separate from the main render code. */
-/* -------------------------------------------------------------------------- */
-
+/**
+ * Checks both frontend and backend favourite field names.
+ */
 function isNoteFavourite(note: FavouriteNote) {
   return Boolean(note.isFavorite ?? note.is_favorite);
 }
 
-/* -------------------------------------------------------------------------- */
-/* Get Note Date Helper */
-/* Reads or derives a specific value so the main component can stay easier to follow. */
-/* -------------------------------------------------------------------------- */
-
+/**
+ * Gets the best available note date.
+ */
 function getNoteDate(note: FavouriteNote) {
   return note.updatedAt ?? note.updated_at ?? note.createdAt ?? note.created_at;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Format Date Helper */
-/* Formats values into readable text before they are shown in the interface. */
-/* -------------------------------------------------------------------------- */
-
+/**
+ * Formats dates safely.
+ */
 function formatDate(value: string | undefined, unknownDate: string) {
   if (!value) return unknownDate;
 
@@ -84,11 +63,9 @@ function formatDate(value: string | undefined, unknownDate: string) {
   return date.toLocaleString();
 }
 
-/* -------------------------------------------------------------------------- */
-/* Get Preview Helper */
-/* Reads or derives a specific value so the main component can stay easier to follow. */
-/* -------------------------------------------------------------------------- */
-
+/**
+ * Creates a short preview for notes and chats.
+ */
 function getPreview(text: string | null | undefined, fallback: string) {
   const cleaned = (text ?? "").replace(/\s+/g, " ").trim();
 
@@ -97,17 +74,7 @@ function getPreview(text: string | null | undefined, fallback: string) {
   return cleaned.length > 150 ? `${cleaned.slice(0, 150)}...` : cleaned;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Main Page Component */
-/* Coordinates page data, user interaction, and the final user interface rendered by this route. */
-/* -------------------------------------------------------------------------- */
-
 export default function FavouritesPage() {
-  /* -------------------------------------------------------------------------- */
-  /* Component Setup */
-  /* Initialises routing, translations, refs, or other page-level services used by the component. */
-  /* -------------------------------------------------------------------------- */
-
   const { t } = useI18n();
 
   const tx = useCallback(
@@ -118,11 +85,6 @@ export default function FavouritesPage() {
     [t]
   );
 
-  /* -------------------------------------------------------------------------- */
-  /* State Values */
-  /* Stores temporary page data such as form fields, loading flags, selected items, modal state, and feedback messages. */
-  /* -------------------------------------------------------------------------- */
-
   const [tab, setTab] = useState<FavouriteTab>("notes");
 
   const [notes, setNotes] = useState<FavouriteNote[]>([]);
@@ -131,11 +93,16 @@ export default function FavouritesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  /* -------------------------------------------------------------------------- */
-  /* Load Favourites Handler */
-  /* Loads the latest backend data and updates the page state used by the interface. */
-  /* -------------------------------------------------------------------------- */
-
+  /**
+   * Loads notes and chat sessions from the backend.
+   *
+   * Notes tab will show:
+   * - favourite notes
+   * - favourite chats created from Learning Workspace
+   *
+   * AI Chats tab will show:
+   * - favourite chats created directly from Chatbots page
+   */
   const loadFavourites = useCallback(async () => {
     setIsLoading(true);
     setError("");
@@ -161,20 +128,13 @@ export default function FavouritesPage() {
     }
   }, [tx]);
 
-  /* -------------------------------------------------------------------------- */
-  /* Side Effects */
-  /* Runs browser or data-loading work after render, such as fetching data, syncing preferences, or cleaning up listeners. */
-  /* -------------------------------------------------------------------------- */
-
   useEffect(() => {
     loadFavourites();
   }, [loadFavourites]);
 
-  /* -------------------------------------------------------------------------- */
-  /* Favourite Notes Derived Value */
-  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
-  /* -------------------------------------------------------------------------- */
-
+  /**
+   * Favourite saved notes.
+   */
   const favouriteNotes = useMemo(() => {
     return notes
       .filter(isNoteFavourite)
@@ -185,11 +145,12 @@ export default function FavouritesPage() {
       });
   }, [notes]);
 
-  /* -------------------------------------------------------------------------- */
-  /* Favourite Learning Chats Derived Value */
-  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
-  /* -------------------------------------------------------------------------- */
-
+  /**
+   * Favourite chats created from Learning Workspace.
+   *
+   * These belong in the Notes tab because they were created from:
+   * notes + reflection + confidence.
+   */
   const favouriteLearningChats = useMemo(() => {
     return chats
       .filter((chat) => chat.isFavorite && chat.source === "learning_workspace")
@@ -200,11 +161,12 @@ export default function FavouritesPage() {
       });
   }, [chats]);
 
-  /* -------------------------------------------------------------------------- */
-  /* Favourite Direct Chats Derived Value */
-  /* Prepares computed data from state or props so the rendered UI stays simple and efficient. */
-  /* -------------------------------------------------------------------------- */
-
+  /**
+   * Favourite direct AI chats.
+   *
+   * These belong in the AI Chats tab because they were created directly
+   * from the Chatbots page.
+   */
   const favouriteDirectChats = useMemo(() => {
     return chats
       .filter((chat) => chat.isFavorite && chat.source === "direct_chat")
@@ -215,11 +177,9 @@ export default function FavouritesPage() {
       });
   }, [chats]);
 
-  /* -------------------------------------------------------------------------- */
-  /* Remove Note Favourite Handler */
-  /* Handles the delete flow, including validation, backend calls, and UI cleanup. */
-  /* -------------------------------------------------------------------------- */
-
+  /**
+   * Removes a note from favourites.
+   */
   async function removeNoteFavourite(note: FavouriteNote) {
     try {
       await updateNote(String(note.id), {
@@ -244,11 +204,9 @@ export default function FavouritesPage() {
     }
   }
 
-  /* -------------------------------------------------------------------------- */
-  /* Remove Chat Favourite Handler */
-  /* Handles the delete flow, including validation, backend calls, and UI cleanup. */
-  /* -------------------------------------------------------------------------- */
-
+  /**
+   * Removes a chat from favourites.
+   */
   async function removeChatFavourite(chat: BackendChatSession) {
     try {
       await toggleBackendChatSessionFavourite(chat.id, false);
@@ -274,22 +232,9 @@ export default function FavouritesPage() {
 
   const activeCount = tab === "notes" ? notesTabCount : chatsTabCount;
 
-  /* -------------------------------------------------------------------------- */
-  /* Component Markup */
-  /* Renders the visible UI for this specific component or page section. */
-  /* -------------------------------------------------------------------------- */
-
-  /* -------------------------------------------------------------------------- */
-  /* Favourites Page Shell */
-  /* Organises favourite notes, favourite chats, tab controls, and feedback states. */
-  /* -------------------------------------------------------------------------- */
-
   return (
     <div className="space-y-6">
-      {/*
-        Favourites Header and Refresh Action
-        Shows the page title and reload button for refreshing favourites from the backend.
-      */}
+      {/* Page heading */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-50">
@@ -315,6 +260,7 @@ export default function FavouritesPage() {
         </button>
       </div>
 
+      {/* Explanation card */}
       <div className="rounded-2xl border border-blue-200 bg-blue-50 px-6 py-5 dark:border-slate-800 dark:bg-slate-900">
         <div className="font-semibold text-slate-900 dark:text-slate-50">
           {tx("favourites.info.title", "Saved for quick access")}
@@ -328,10 +274,7 @@ export default function FavouritesPage() {
         </p>
       </div>
 
-      {/*
-        Favourites Error Banner
-        Shows loading or update problems in plain English.
-      */}
+      {/* Error banner */}
       {error && (
         <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950 dark:text-red-100">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -339,6 +282,7 @@ export default function FavouritesPage() {
         </div>
       )}
 
+      {/* Tabs */}
       <div className="inline-flex rounded-2xl bg-slate-100 p-1 dark:bg-slate-900">
         <TabButton active={tab === "notes"} onClick={() => setTab("notes")}>
           <FileText className="h-4 w-4" />
@@ -357,6 +301,7 @@ export default function FavouritesPage() {
         </TabButton>
       </div>
 
+      {/* Main content */}
       {isLoading ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
           {tx("favourites.loading", "Loading favourites...")}
@@ -365,16 +310,8 @@ export default function FavouritesPage() {
         <EmptyState tab={tab} />
       ) : (
         <div className="space-y-4">
-          {/*
-            Favourite Notes Section
-            Shows favourite notes and Learning Workspace chats in one learning-focused area.
-          */}
           {tab === "notes" && (
             <>
-              {/*
-                Favourite Note Cards
-                Renders each favourite saved note with preview text and an unfavourite action.
-              */}
               {favouriteNotes.map((note) => (
                 <FavouriteNoteCard
                   key={`note-${String(note.id)}`}
@@ -383,10 +320,6 @@ export default function FavouritesPage() {
                 />
               ))}
 
-              {/*
-                Favourite Learning Chat Cards
-                Displays chats created from Learning Workspace notes.
-              */}
               {favouriteLearningChats.map((chat) => (
                 <FavouriteChatCard
                   key={`learning-chat-${chat.id}`}
@@ -399,10 +332,6 @@ export default function FavouritesPage() {
             </>
           )}
 
-          {/*
-            Favourite Direct Chats Section
-            Shows direct AI chat favourites with continue and remove actions.
-          */}
           {tab === "chats" &&
             favouriteDirectChats.map((chat) => (
               <FavouriteChatCard
@@ -419,11 +348,6 @@ export default function FavouritesPage() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Tab Button Function */
-/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
-/* -------------------------------------------------------------------------- */
-
 function TabButton({
   active,
   onClick,
@@ -433,11 +357,6 @@ function TabButton({
   onClick: () => void;
   children: React.ReactNode;
 }) {
-  /* -------------------------------------------------------------------------- */
-  /* Component Markup */
-  /* Renders the visible UI for this specific component or page section. */
-  /* -------------------------------------------------------------------------- */
-
   return (
     <button
       type="button"
@@ -453,11 +372,6 @@ function TabButton({
     </button>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/* Empty State Function */
-/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
-/* -------------------------------------------------------------------------- */
 
 function EmptyState({ tab }: { tab: FavouriteTab }) {
   const { t } = useI18n();
@@ -512,11 +426,6 @@ function EmptyState({ tab }: { tab: FavouriteTab }) {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Favourite Note Card Function */
-/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
-/* -------------------------------------------------------------------------- */
-
 function FavouriteNoteCard({
   note,
   onRemove,
@@ -524,17 +433,7 @@ function FavouriteNoteCard({
   note: FavouriteNote;
   onRemove: () => void;
 }) {
-  /* -------------------------------------------------------------------------- */
-  /* Component Setup */
-  /* Initialises routing, translations, refs, or other page-level services used by the component. */
-  /* -------------------------------------------------------------------------- */
-
   const { t } = useI18n();
-
-  /* -------------------------------------------------------------------------- */
-  /* Tx Handler */
-  /* Keeps this component action separate so the render section stays easier to read. */
-  /* -------------------------------------------------------------------------- */
 
   const tx = useCallback(
     (key: string, fallback: string) => {
@@ -543,11 +442,6 @@ function FavouriteNoteCard({
     },
     [t]
   );
-
-  /* -------------------------------------------------------------------------- */
-  /* Component Markup */
-  /* Renders the visible UI for this specific component or page section. */
-  /* -------------------------------------------------------------------------- */
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -612,7 +506,7 @@ function FavouriteNoteCard({
 
       <div className="mt-4 flex justify-end gap-3">
         <Link
-          href={`/learning_workspace?noteId=${note.id}`}
+          href={`/learning-workspace?noteId=${note.id}`}
           className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900"
         >
           {tx("common.view", "View")}
@@ -630,11 +524,6 @@ function FavouriteNoteCard({
     </div>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/* Favourite Chat Card Function */
-/* Keeps this piece of logic isolated so the rest of the file is easier to scan and explain. */
-/* -------------------------------------------------------------------------- */
 
 function FavouriteChatCard({
   chat,
