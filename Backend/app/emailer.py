@@ -1,89 +1,82 @@
-# backend/app/emailer.py
+# /Backend/app/emailer.py
 
-# backend/app/emailer.py
-
-"""
-Email sending helper.
-
-Development:
-- MAIL_TRANSPORT=console
-- Code prints in the backend terminal
-
-Production:
-- MAIL_TRANSPORT=smtp
-- Code is sent through SMTP settings
-"""
-
-# ---------------------------------------------------------------------
-# Imports and Email Settings
-# ---------------------------------------------------------------------
-# This section imports Python's email tools and the backend settings object.
-# The settings decide whether codes are printed locally or sent through SMTP.
-# ---------------------------------------------------------------------
-import smtplib
-from email.message import EmailMessage
+import json
+import urllib.error
+import urllib.request
 
 from .settings import settings
 
 
-# ---------------------------------------------------------------------
-# Verification Email Sender
-# ---------------------------------------------------------------------
-# This function sends the six-digit code used for verification and password reset.
-# It supports console output for development and SMTP delivery for production.
-# ---------------------------------------------------------------------
-def send_verification_email(to_email: str, code: str) -> None:
-    """
-    Sends a verification/reset code.
-
-    Your current backend uses this function for:
-    - email verification
-    - forgot password reset code
-
-    The email text is written in plain English so users understand:
-    - what the code is
-    - when it expires
-    - what to do if they did not request it
-    """
-
-    if settings.MAIL_TRANSPORT == "console":
-        print(
-            "\n=== MEDIMIND EMAIL CODE ===\n"
-            f"To: {to_email}\n"
-            f"Code: {code}\n"
-            f"Expires in: {settings.VERIFY_CODE_EXPIRE_MINUTES} minutes\n"
-            "===========================\n"
-        )
-        return
-
-    if settings.MAIL_TRANSPORT != "smtp":
-        raise RuntimeError(
-            "MAIL_TRANSPORT must be either 'console' for development or 'smtp' for real email sending."
-        )
-
-    msg = EmailMessage()
-    msg["Subject"] = "Your MediMind verification code"
-    msg["From"] = settings.MAIL_FROM
-    msg["To"] = to_email
-
-    msg.set_content(
+def build_email_text(code: str) -> str:
+    return (
         f"Your MediMind verification code is: {code}\n\n"
         f"This code expires in {settings.VERIFY_CODE_EXPIRE_MINUTES} minutes.\n\n"
         "Enter this code in MediMind to continue.\n\n"
         "If you did not request this code, you can safely ignore this email."
     )
 
+
+def build_email_html(code: str) -> str:
+    return f"""
+    <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+      <h2>Your MediMind verification code</h2>
+      <p>Your MediMind verification code is:</p>
+      <p style="font-size: 28px; font-weight: bold; letter-spacing: 4px;">{code}</p>
+      <p>This code expires in {settings.VERIFY_CODE_EXPIRE_MINUTES} minutes.</p>
+      <p>Enter this code in MediMind to continue.</p>
+      <p>If you did not request this code, you can safely ignore this email.</p>
+    </div>
+    """
+
+
+def send_verification_email(to_email: str, code: str) -> None:
+    """
+    Sends a MediMind verification or password-reset code using Brevo.
+
+    This function is used for:
+    - email verification
+    - resend verification code
+    - forgot-password reset code
+    """
+
+    payload = {
+        "sender": {
+            "name": settings.MAIL_FROM_NAME,
+            "email": settings.MAIL_FROM,
+        },
+        "to": [
+            {
+                "email": to_email,
+            }
+        ],
+        "subject": "Your MediMind verification code",
+        "textContent": build_email_text(code),
+        "htmlContent": build_email_html(code),
+    }
+
+    request = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "api-key": settings.BREVO_API_KEY or "",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+
     try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-            if settings.SMTP_TLS:
-                server.starttls()
+        with urllib.request.urlopen(request, timeout=20) as response:
+            if response.status < 200 or response.status >= 300:
+                raise RuntimeError(f"Brevo returned status {response.status}.")
 
-            if settings.SMTP_USER:
-                server.login(settings.SMTP_USER, settings.SMTP_PASS)
-
-            server.send_message(msg)
-
-    except smtplib.SMTPException as exc:
+    except urllib.error.HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
         raise RuntimeError(
-            "Email could not be sent. Please check SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM, and SMTP_TLS in your backend .env file."
+            f"Brevo email failed. Status: {exc.code}. Response: {error_body}"
+        ) from exc
+
+    except urllib.error.URLError as exc:
+        raise RuntimeError(
+            "Brevo email failed because the backend could not connect to Brevo."
         ) from exc
