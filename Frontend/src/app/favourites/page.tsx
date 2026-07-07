@@ -94,6 +94,7 @@ export default function FavouritesPage() {
   const [error, setError] = useState("");
 
   /**
+<<<<<<< HEAD
    * Loads notes and chat sessions from the backend.
    *
    * Notes tab will show:
@@ -102,6 +103,13 @@ export default function FavouritesPage() {
    *
    * AI Chats tab will show:
    * - favourite chats created directly from Chatbots page
+=======
+   * Loads favourite notes and saved chat sessions from the backend.
+   *
+   * Notes tab shows only notes created in Learning Workspace.
+   * AI Chats tab shows every favourited AI chat, whether it was started
+   * directly or from a saved note.
+>>>>>>> dc1dabe (Fixes the favourites & lrarning_workspace erorr)
    */
   const loadFavourites = useCallback(async () => {
     setIsLoading(true);
@@ -146,14 +154,23 @@ export default function FavouritesPage() {
   }, [notes]);
 
   /**
+<<<<<<< HEAD
    * Favourite chats created from Learning Workspace.
    *
    * These belong in the Notes tab because they were created from:
    * notes + reflection + confidence.
    */
   const favouriteLearningChats = useMemo(() => {
+=======
+   * Favourite AI chats.
+   *
+   * Every favourited chat belongs in the AI Chats tab, including chats
+   * created directly and chats created from Learning Workspace notes.
+   */
+  const favouriteChats = useMemo(() => {
+>>>>>>> dc1dabe (Fixes the favourites & lrarning_workspace erorr)
     return chats
-      .filter((chat) => chat.isFavorite && chat.source === "learning_workspace")
+      .filter((chat) => chat.isFavorite)
       .sort((a, b) => {
         const bTime = new Date(b.updatedAt ?? "").getTime() || 0;
         const aTime = new Date(a.updatedAt ?? "").getTime() || 0;
@@ -162,6 +179,7 @@ export default function FavouritesPage() {
   }, [chats]);
 
   /**
+<<<<<<< HEAD
    * Favourite direct AI chats.
    *
    * These belong in the AI Chats tab because they were created directly
@@ -178,6 +196,8 @@ export default function FavouritesPage() {
   }, [chats]);
 
   /**
+=======
+>>>>>>> dc1dabe (Fixes the favourites & lrarning_workspace erorr)
    * Removes a note from favourites.
    */
   async function removeNoteFavourite(note: FavouriteNote) {
@@ -227,8 +247,8 @@ export default function FavouritesPage() {
     }
   }
 
-  const notesTabCount = favouriteNotes.length + favouriteLearningChats.length;
-  const chatsTabCount = favouriteDirectChats.length;
+  const notesTabCount = favouriteNotes.length;
+  const chatsTabCount = favouriteChats.length;
 
   const activeCount = tab === "notes" ? notesTabCount : chatsTabCount;
 
@@ -244,7 +264,7 @@ export default function FavouritesPage() {
           <p className="mt-1 text-slate-600 dark:text-slate-300">
             {tx(
               "favourites.subtitle",
-              "Access your saved notes, Learning Workspace chats, and direct AI chats."
+              "Access your saved notes and favourite AI chats."
             )}
           </p>
         </div>
@@ -269,7 +289,7 @@ export default function FavouritesPage() {
         <p className="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-200">
           {tx(
             "favourites.info.desc",
-            "Learning Workspace chats appear under Notes. Direct chatbot conversations appear under AI Chats."
+            "Notes appear under Notes. All AI conversations, including chats created from Learning Workspace, appear under AI Chats."
           )}
         </p>
       </div>
@@ -310,6 +330,7 @@ export default function FavouritesPage() {
         <EmptyState tab={tab} />
       ) : (
         <div className="space-y-4">
+<<<<<<< HEAD
           {tab === "notes" && (
             <>
               {favouriteNotes.map((note) => (
@@ -332,14 +353,33 @@ export default function FavouritesPage() {
             </>
           )}
 
+=======
+          {tab === "notes" &&
+            favouriteNotes.map((note) => (
+              <FavouriteNoteCard
+                key={`note-${String(note.id)}`}
+                note={note}
+                onRemove={() => removeNoteFavourite(note)}
+              />
+            ))}
+
+>>>>>>> dc1dabe (Fixes the favourites & lrarning_workspace erorr)
           {tab === "chats" &&
-            favouriteDirectChats.map((chat) => (
+            favouriteChats.map((chat) => (
               <FavouriteChatCard
-                key={`direct-chat-${chat.id}`}
+                key={`chat-${chat.id}`}
                 chat={chat}
                 onRemove={() => removeChatFavourite(chat)}
-                label="AI learning conversation"
-                badge="Created directly from the Chatbots page"
+                label={
+                  chat.source === "learning_workspace"
+                    ? "Learning Workspace AI chat"
+                    : "Direct AI chat"
+                }
+                badge={
+                  chat.source === "learning_workspace"
+                    ? "Created from notes, reflection, and confidence"
+                    : "Created directly from the Chatbots page"
+                }
               />
             ))}
         </div>
@@ -398,19 +438,19 @@ function EmptyState({ tab }: { tab: FavouriteTab }) {
 
       <h3 className="mt-4 text-base font-semibold text-slate-900 dark:text-slate-50">
         {isNotes
-          ? tx("favourites.empty.notes.title", "No favourite notes or Learning Workspace chats yet")
-          : tx("favourites.empty.chats.title", "No favourite direct AI chats yet")}
+          ? tx("favourites.empty.notes.title", "No favourite notes yet")
+          : tx("favourites.empty.chats.title", "No favourite AI chats yet")}
       </h3>
 
       <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
         {isNotes
           ? tx(
               "favourites.empty.notes.desc",
-              "Open a note in Learning Workspace or favourite a chat that was created from your notes."
+              "Open a note in Learning Workspace, then choose Add to Favourites."
             )
           : tx(
               "favourites.empty.chats.desc",
-              "Open Chatbots, click the three-dot menu on a direct AI chat, then choose Add to favourites."
+              "Open Chatbots or a Learning Workspace AI chat, then choose Add to favourites."
             )}
       </p>
 
@@ -507,6 +547,7 @@ function FavouriteNoteCard({
       <div className="mt-4 flex justify-end gap-3">
         <Link
           href={`/learning-workspace?noteId=${note.id}`}
+          href={`/learning_workspace?noteId=${encodeURIComponent(String(note.id))}`}
           className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900"
         >
           {tx("common.view", "View")}
@@ -605,7 +646,7 @@ function FavouriteChatCard({
 
       <div className="mt-4 flex justify-end gap-3">
         <Link
-          href={`/chatbot_InteractionPage?chatId=${chat.id}`}
+          href={`/chatbot_InteractionPage?chatId=${encodeURIComponent(String(chat.id))}`}
           className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900"
         >
           {tx("common.view", "View")}

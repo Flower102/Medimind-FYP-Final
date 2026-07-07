@@ -415,6 +415,23 @@ export default function LearningWorkspacePage() {
 
 
   /* -------------------------------------------------------------------------- */
+  /* Load Note From URL Side Effect */
+  /* Opens a specific saved note when the page is visited from Favourites using ?noteId=. */
+  /* -------------------------------------------------------------------------- */
+
+  useEffect(() => {
+    if (!hasLoadedNotes) return;
+
+    const noteIdFromUrl = searchParams.get("noteId");
+
+    if (!noteIdFromUrl) return;
+    if (String(selectedNoteId) === String(noteIdFromUrl)) return;
+
+    handleSelectNote(noteIdFromUrl);
+  }, [handleSelectNote, hasLoadedNotes, searchParams, selectedNoteId]);
+
+
+  /* -------------------------------------------------------------------------- */
   /* Save Note Internal Handler */
   /* Handles this user action and keeps the backend data and visible UI in sync. */
   /* -------------------------------------------------------------------------- */
