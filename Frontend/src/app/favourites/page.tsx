@@ -94,22 +94,11 @@ export default function FavouritesPage() {
   const [error, setError] = useState("");
 
   /**
-<<<<<<< HEAD
-   * Loads notes and chat sessions from the backend.
-   *
-   * Notes tab will show:
-   * - favourite notes
-   * - favourite chats created from Learning Workspace
-   *
-   * AI Chats tab will show:
-   * - favourite chats created directly from Chatbots page
-=======
    * Loads favourite notes and saved chat sessions from the backend.
    *
    * Notes tab shows only notes created in Learning Workspace.
    * AI Chats tab shows every favourited AI chat, whether it was started
    * directly or from a saved note.
->>>>>>> dc1dabe (Fixes the favourites & lrarning_workspace erorr)
    */
   const loadFavourites = useCallback(async () => {
     setIsLoading(true);
@@ -154,21 +143,12 @@ export default function FavouritesPage() {
   }, [notes]);
 
   /**
-<<<<<<< HEAD
-   * Favourite chats created from Learning Workspace.
-   *
-   * These belong in the Notes tab because they were created from:
-   * notes + reflection + confidence.
-   */
-  const favouriteLearningChats = useMemo(() => {
-=======
    * Favourite AI chats.
    *
    * Every favourited chat belongs in the AI Chats tab, including chats
    * created directly and chats created from Learning Workspace notes.
    */
   const favouriteChats = useMemo(() => {
->>>>>>> dc1dabe (Fixes the favourites & lrarning_workspace erorr)
     return chats
       .filter((chat) => chat.isFavorite)
       .sort((a, b) => {
@@ -179,25 +159,6 @@ export default function FavouritesPage() {
   }, [chats]);
 
   /**
-<<<<<<< HEAD
-   * Favourite direct AI chats.
-   *
-   * These belong in the AI Chats tab because they were created directly
-   * from the Chatbots page.
-   */
-  const favouriteDirectChats = useMemo(() => {
-    return chats
-      .filter((chat) => chat.isFavorite && chat.source === "direct_chat")
-      .sort((a, b) => {
-        const bTime = new Date(b.updatedAt ?? "").getTime() || 0;
-        const aTime = new Date(a.updatedAt ?? "").getTime() || 0;
-        return bTime - aTime;
-      });
-  }, [chats]);
-
-  /**
-=======
->>>>>>> dc1dabe (Fixes the favourites & lrarning_workspace erorr)
    * Removes a note from favourites.
    */
   async function removeNoteFavourite(note: FavouriteNote) {
@@ -330,30 +291,6 @@ export default function FavouritesPage() {
         <EmptyState tab={tab} />
       ) : (
         <div className="space-y-4">
-<<<<<<< HEAD
-          {tab === "notes" && (
-            <>
-              {favouriteNotes.map((note) => (
-                <FavouriteNoteCard
-                  key={`note-${String(note.id)}`}
-                  note={note}
-                  onRemove={() => removeNoteFavourite(note)}
-                />
-              ))}
-
-              {favouriteLearningChats.map((chat) => (
-                <FavouriteChatCard
-                  key={`learning-chat-${chat.id}`}
-                  chat={chat}
-                  onRemove={() => removeChatFavourite(chat)}
-                  label="Learning Workspace chat"
-                  badge="Created from notes, reflection, and confidence"
-                />
-              ))}
-            </>
-          )}
-
-=======
           {tab === "notes" &&
             favouriteNotes.map((note) => (
               <FavouriteNoteCard
@@ -363,7 +300,6 @@ export default function FavouritesPage() {
               />
             ))}
 
->>>>>>> dc1dabe (Fixes the favourites & lrarning_workspace erorr)
           {tab === "chats" &&
             favouriteChats.map((chat) => (
               <FavouriteChatCard
@@ -546,7 +482,6 @@ function FavouriteNoteCard({
 
       <div className="mt-4 flex justify-end gap-3">
         <Link
-          href={`/learning-workspace?noteId=${note.id}`}
           href={`/learning_workspace?noteId=${encodeURIComponent(String(note.id))}`}
           className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900"
         >
