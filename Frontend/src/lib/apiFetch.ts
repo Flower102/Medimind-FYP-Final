@@ -3,7 +3,7 @@
 /* -------------------------------------------------------------------------- */
 /* Shared API Fetch Overview                                                   */
 /* This file centralises frontend API requests so authenticated calls, JSON    */
-/* handling, and backend error messages behave consistently across the app.    */
+/* handling, session refresh, and backend errors work consistently everywhere. */
 /* -------------------------------------------------------------------------- */
 
 export type ApiFetchOptions = {
@@ -17,7 +17,7 @@ export type ApiFetchOptions = {
 /* -------------------------------------------------------------------------- */
 /* Backend Error Response Types                                                */
 /* These types represent the different shapes FastAPI may return when a        */
-/* request fails, including plain strings and structured detail objects.       */
+/* request fails, including plain strings and structured detail objects.        */
 /* -------------------------------------------------------------------------- */
 
 type BackendErrorDetail =
@@ -94,6 +94,33 @@ const FRIENDLY_ERROR_MESSAGES: Record<string, string> = {
   RATE_LIMITED: "Too many attempts. Please wait a moment and try again.",
   SERVER_ERROR: "The server had a problem. Please try again later.",
 };
+
+/* -------------------------------------------------------------------------- */
+/* Public Auth Routes                                                          */
+/* These routes should not trigger automatic refresh because they are used     */
+/* before the user is signed in or during account recovery.                    */
+/* -------------------------------------------------------------------------- */
+
+const PUBLIC_AUTH_PATHS = [
+  "/auth/signin",
+  "/auth/signup",
+  "/auth/verify",
+  "/auth/resend-verification",
+  "/auth/forgot-password",
+  "/auth/verify-reset-code",
+  "/auth/reset-password",
+  "/auth/google/login",
+  "/auth/google/callback",
+  "/auth/refresh",
+];
+
+/* -------------------------------------------------------------------------- */
+/* Shared Refresh Request State                                                */
+/* This prevents several expired requests from calling /auth/refresh at the    */
+/* same time when the user returns after being inactive.                       */
+/* -------------------------------------------------------------------------- */
+
+let refreshPromise: Promise<boolean> | null = null;
 
 /* -------------------------------------------------------------------------- */
 /* HTTP Status Fallback Helper                                                 */
@@ -228,12 +255,92 @@ function getErrorInfo(data: unknown, status: number) {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Refresh Eligibility Helper                                                  */
+/* Only protected requests should try to refresh the session. Public auth      */
+/* actions such as sign-in, sign-up, and reset password should not retry.      */
+/* -------------------------------------------------------------------------- */
+
+function shouldTryRefresh(cleanPath: string, status: number) {
+  if (status !== 401) return false;
+
+  return !PUBLIC_AUTH_PATHS.some((publicPath) =>
+    cleanPath.startsWith(publicPath)
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Sign-In Redirect Helper                                                     */
+/* When both the access token and refresh token are no longer valid, the user  */
+/* is redirected to sign in again instead of seeing confusing failed actions.  */
+/* -------------------------------------------------------------------------- */
+
+function redirectToSignIn() {
+  if (typeof window === "undefined") return;
+
+  const currentPath = `${window.location.pathname}${window.location.search}`;
+
+  if (window.location.pathname.startsWith("/auth/signin")) return;
+
+  window.location.replace(
+    `/auth/signin?expired=1&next=${encodeURIComponent(currentPath)}`
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Session Refresh Helper                                                      */
+/* This calls the backend refresh endpoint once and shares the result with any */
+/* other requests that failed at the same time.                                */
+/* -------------------------------------------------------------------------- */
+
+async function refreshSession() {
+  if (!refreshPromise) {
+    refreshPromise = fetch("/api/backend/auth/refresh", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then((response) => response.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Fetch Request Builder                                                       */
+/* This prepares the fetch options in one place so the first request and retry */
+/* request are always sent in the same way.                                    */
+/* -------------------------------------------------------------------------- */
+
+function buildFetchOptions(options: ApiFetchOptions) {
+  const hasJson = typeof options.json !== "undefined";
+
+  return {
+    method: options.method ?? "GET",
+    credentials: "include" as RequestCredentials,
+    cache: options.cache ?? "no-store",
+    signal: options.signal,
+    headers: {
+      ...(hasJson ? { "Content-Type": "application/json" } : {}),
+      ...(options.headers ?? {}),
+    },
+    body: hasJson ? JSON.stringify(options.json) : undefined,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
 /* Public Error Message Helper                                                 */
 /* Pages can use this helper to turn unknown caught errors into safe text for  */
 /* banners, modals, or inline validation messages.                             */
 /* -------------------------------------------------------------------------- */
 
-export function getApiErrorMessage(error: unknown, fallback = "Something went wrong. Please try again.") {
+export function getApiErrorMessage(
+  error: unknown,
+  fallback = "Something went wrong. Please try again."
+) {
   if (error instanceof ApiError) return error.message;
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -242,45 +349,44 @@ export function getApiErrorMessage(error: unknown, fallback = "Something went wr
 
 /* -------------------------------------------------------------------------- */
 /* Main API Fetch Helper                                                       */
-/* This is the main request helper for modern frontend code. It sends requests */
-/* through /api/backend, includes cookies, parses responses, and throws ApiError. */
+/* This is the main request helper for modern frontend code. It retries once   */
+/* after refreshing an expired session, then redirects if the session is gone. */
 /* -------------------------------------------------------------------------- */
 
 export async function apiFetch<T>(
   path: string,
   options: ApiFetchOptions = {}
 ): Promise<T> {
-  /* ------------------------------------------------------------------------ */
-  /* Request Setup                                                             */
-  /* The path is normalised and JSON bodies are detected so the correct method,*/
-  /* headers, cache behaviour, and body are sent to the proxy.                 */
-  /* ------------------------------------------------------------------------ */
-
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  const hasJson = typeof options.json !== "undefined";
+  const url = `/api/backend${cleanPath}`;
 
-  const res = await fetch(`/api/backend${cleanPath}`, {
-    method: options.method ?? "GET",
-    credentials: "include",
-    cache: options.cache ?? "no-store",
-    signal: options.signal,
-    headers: {
-      ...(hasJson ? { "Content-Type": "application/json" } : {}),
-      ...(options.headers ?? {}),
-    },
-    body: hasJson ? JSON.stringify(options.json) : undefined,
-  });
+  let res = await fetch(url, buildFetchOptions(options));
 
-  /* ------------------------------------------------------------------------ */
-  /* Response Processing                                                       */
-  /* The response is parsed once. Failed responses become structured ApiError  */
-  /* instances, while successful responses return typed data to the caller.    */
-  /* ------------------------------------------------------------------------ */
+  if (shouldTryRefresh(cleanPath, res.status)) {
+    const refreshed = await refreshSession();
+
+    if (refreshed) {
+      res = await fetch(url, buildFetchOptions(options));
+    } else {
+      redirectToSignIn();
+
+      throw new ApiError(
+        "AUTH_SESSION_EXPIRED",
+        "Your session has expired. Please sign in again.",
+        401
+      );
+    }
+  }
 
   const data = await readResponseBody(res);
 
   if (!res.ok) {
     const { code, message } = getErrorInfo(data, res.status);
+
+    if (res.status === 401 && shouldTryRefresh(cleanPath, res.status)) {
+      redirectToSignIn();
+    }
+
     throw new ApiError(code, message, res.status, data);
   }
 

@@ -461,11 +461,12 @@ def get_current_user(
 # Authentication Cookie Writer
 # ---------------------------------------------------------------------
 # This helper stores access and refresh tokens in httpOnly cookies.
-# It keeps cookie settings consistent after sign-in, refresh, and Google login.
+# Both cookies use path="/" so they are available through the Next.js
+# /api/backend proxy as well as direct backend routes.
 # ---------------------------------------------------------------------
 
 def set_auth_cookies(res: Response, access_token: str, refresh_token: str):
-    # Access cookie: sent to all routes
+    # Access cookie: sent to all app/proxy routes.
     res.set_cookie(
         key=settings.AUTH_COOKIE_ACCESS,
         value=access_token,
@@ -476,7 +477,9 @@ def set_auth_cookies(res: Response, access_token: str, refresh_token: str):
         path="/",
     )
 
-    # Refresh cookie: only sent to /auth routes (good practice)
+    # Refresh cookie: also sent to all app/proxy routes.
+    # This is needed because the frontend refresh call goes through:
+    # /api/backend/auth/refresh
     res.set_cookie(
         key=settings.AUTH_COOKIE_REFRESH,
         value=refresh_token,
@@ -484,20 +487,28 @@ def set_auth_cookies(res: Response, access_token: str, refresh_token: str):
         samesite=settings.AUTH_COOKIE_SAMESITE,
         secure=settings.AUTH_COOKIE_SECURE,
         max_age=60 * 60 * 24 * settings.REFRESH_TOKEN_EXPIRE_DAYS,
-        path="/auth",
+        path="/",
     )
+
 
 # ---------------------------------------------------------------------
 # Authentication Cookie Clearer
 # ---------------------------------------------------------------------
 # This helper removes authentication cookies during sign-out or account deletion.
-# It uses the same cookie paths as the setter so deletion works correctly.
+# It deletes the current refresh cookie path and the old /auth path so older
+# browser cookies are cleaned up safely after this change.
 # ---------------------------------------------------------------------
 
 def clear_auth_cookies(res: Response):
-    # Must delete with the SAME path you used when setting
+    # Delete access cookie.
     res.delete_cookie(settings.AUTH_COOKIE_ACCESS, path="/")
+
+    # Delete new refresh cookie path.
+    res.delete_cookie(settings.AUTH_COOKIE_REFRESH, path="/")
+
+    # Delete old refresh cookie path from earlier versions of the app.
     res.delete_cookie(settings.AUTH_COOKIE_REFRESH, path="/auth")
+
 
 # ---------------------------------------------------------------------
 # Refresh Token Revocation
